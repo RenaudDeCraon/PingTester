@@ -1,9 +1,9 @@
-To run this code first dowload
+**Install required dependencies:**
 
 pip install flask
 pip install flask-cors
 pip install flask-socketio
 
+**Run the application:**
 
-to run 
 python netpulse_backend.py
