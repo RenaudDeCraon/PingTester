@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="styles/main.css" />
+  <title>NetPulse Dashboard</title>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <h1 class="logo">NetPulse</h1>
+    <nav class="nav">
+      <a href="#" class="nav-link">Home</a>
+      <a href="#metrics" class="nav-link">Live Metrics</a>
+      <a href="#settings" class="nav-link">Settings</a>
+    </nav>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Statistics Cards -->
+    <section class="stats-cards">
+      <div class="card">
+        <h2>Avg. Latency</h2>
+        <p id="avgLatency">-- ms</p>
+      </div>
+      <div class="card">
+        <h2>Packet Loss</h2>
+        <p id="packetLoss">-- %</p>
+      </div>
+      <div class="card">
+        <h2>Jitter</h2>
+        <p id="jitter">-- ms</p>
+      </div>
+    </section>
+
+    <!-- Live Chart -->
+    <section id="metrics" class="chart-container">
+      <canvas id="pingChart"></canvas>
+    </section>
+
+    <!-- Settings -->
+    <section id="settings" class="settings">
+      <h2>Settings</h2>
+      <form class="settings-form">
+        <label for="interval">Ping Interval (sec)</label>
+        <input type="number" id="interval" name="interval" min="1" max="60" value="5" />
+        <button type="submit" class="btn">Save</button>
+      </form>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>© 2025 NetPulse. All rights reserved.</p>
+  </footer>
+
+  <!-- Scripts (to be populated later) -->
+  <script src="../src/websocket_client.js"></script>
+  <script src="../src/chart_controller.js"></script>
+  <script src="../src/dashboard_ui.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const wsClient = new WebSocketClient();
+      const chartCtrl = new ChartController('pingChart');
+      const ui = new DashboardUI(wsClient, chartCtrl);
+      ui.init();
+    });
+  </script>
+</body>
+</html>
