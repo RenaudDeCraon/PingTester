@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetPulse Elite - Network Intelligence Platform</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.4/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(0, 255, 255, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            z-index: -1;
+        }
+
+        .title {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(45deg, #00ffff, #0080ff, #8000ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #64ffda;
+            font-weight: 300;
+            margin-bottom: 30px;
+        }
+
+        .connection-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff5555;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #50fa7b;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .nav-tab {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid transparent;
+            color: #ffffff;
+            padding: 12px 24px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            font-weight: 500;
+        }
+
+        .nav-tab:hover {
+            background: rgba(0, 255, 255, 0.1);
+            border-color: #00ffff;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 255, 255, 0.2);
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(45deg, #00ffff, #0080ff);
+            color: #000000;
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+        }
+
+        .input-label {
+            display: block;
+            margin-bottom: 8px;
+            color: #64ffda;
+            font-weight: 500;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+
+        .input-field::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #00ffff, #0080ff);
+            color: #000000;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 20px rgba(0, 255, 255, 0.3);
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(0, 255, 255, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: #00ffff;
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #ff5555, #ff0000);
+            color: #ffffff;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stats-card {
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(128, 0, 255, 0.1));
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stats-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .stats-card:hover::before {
+            left: 100%;
+        }
+
+        .stats-number {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #00ffff;
+            margin-bottom: 10px;
+        }
+
+        .stats-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .terminal {
+            background: #000000;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.4;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 2px solid #00ffff;
+            position: relative;
+        }
+
+        .terminal::before {
+            content: '● ● ●';
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            color: #ff5555;
+            font-size: 12px;
+        }
+
+        .terminal-line {
+            margin-bottom: 5px;
+            word-wrap: break-word;
+        }
+
+        .terminal-prompt {
+            color: #00ffff;
+        }
+
+        .terminal-output {
+            color: #ffffff;
+        }
+
+        .terminal-error {
+            color: #ff5555;
+        }
+
+        .terminal-success {
+            color: #50fa7b;
+        }
+
+        .terminal-warning {
+            color: #ffd700;
+        }
+
+        .alert {
+            background: linear-gradient(135deg, rgba(255, 85, 85, 0.1), rgba(255, 0, 0, 0.1));
+            border: 1px solid #ff5555;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .alert-critical {
+            border-color: #ff0000;
+            background: linear-gradient(135deg, rgba(255, 0, 0, 0.2), rgba(255, 85, 85, 0.1));
+        }
+
+        .alert-high {
+            border-color: #ff6b00;
+            background: linear-gradient(135deg, rgba(255, 107, 0, 0.2), rgba(255, 165, 0, 0.1));
+        }
+
+        .alert-medium {
+            border-color: #ffd700;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 255, 0, 0.1));
+        }
+
+        .alert-low {
+            border-color: #36a64f;
+            background: linear-gradient(135deg, rgba(54, 166, 79, 0.2), rgba(0, 255, 0, 0.1));
+        }
+
+        .alert-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .alert-meta {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #00ffff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .status-online {
+            background: #50fa7b;
+            box-shadow: 0 0 10px #50fa7b;
+        }
+
+        .status-offline {
+            background: #ff5555;
+            box-shadow: 0 0 10px #ff5555;
+        }
+
+        .status-warning {
+            background: #ffd700;
+            box-shadow: 0 0 10px #ffd700;
+        }
+
+        .results-container {
+            max-height: 500px;
+            overflow-y: auto;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid #00ffff;
+            border-radius: 3px;
+            background: transparent;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .checkbox-item input[type="checkbox"]:checked {
+            background: #00ffff;
+        }
+
+        .checkbox-item input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #000000;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .select-field {
+            width: 100%;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .select-field option {
+            background: #1a1a2e;
+            color: #ffffff;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ffff;
+            border-radius: 10px;
+            padding: 15px 20px;
+            color: #ffffff;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            max-width: 350px;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.error {
+            border-color: #ff5555;
+            background: rgba(255, 0, 0, 0.1);
+        }
+
+        .notification.success {
+            border-color: #50fa7b;
+            background: rgba(0, 255, 0, 0.1);
+        }
+
+        .notification.warning {
+            border-color: #ffd700;
+            background: rgba(255, 255, 0, 0.1);
+        }
+
+        .notification-close {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #ffffff;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2.5rem;
+            }
+            
+            .nav-tabs {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+
+            .notification {
+                position: fixed;
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                max-width: none;
+                transform: translateY(-100px);
+            }
+
+            .notification.show {
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">NetPulse Elite</h1>
+            <p class="subtitle">Continuous Network Intelligence Platform</p>
+            <div class="connection-status">
+                <div class="status-dot" id="connectionStatus"></div>
+                <span id="connectionText">Connecting...</span>
+            </div>
+        </div>
+
+        <div class="nav-tabs">
+            <div class="nav-tab active" onclick="switchTab('analysis')">🔍 Single Analysis</div>
+            <div class="nav-tab" onclick="switchTab('monitoring')">📊 Continuous Monitoring</div>
+            <div class="nav-tab" onclick="switchTab('traffic')">🌐 Traffic Analysis</div>
+            <div class="nav-tab" onclick="switchTab('dashboard')">📈 Dashboard</div>
+            <div class="nav-tab" onclick="switchTab('alerts')">🚨 Alerts</div>
+        </div>
+
+        <!-- Single Analysis Tab -->
+        <div id="analysis" class="tab-content active">
+            <div class="card">
+                <h2 style="margin-bottom: 20px; color: #00ffff;">🔍 Single Target Analysis</h2>
+                <div class="input-group">
+                    <label class="input-label">Target (Hostname, Domain, or IP)</label>
+                    <input type="text" class="input-field" id="analysisTarget" placeholder="e.g., google.com, 192.168.1.1">
+                </div>
+                
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="saveResults" checked>
+                        <label for="saveResults">Save Results to JSON</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="verboseOutput">
+                        <label for="verboseOutput">Verbose Output</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="noColor">
+                        <label for="noColor">Disable Colors</label>
+                    </div>
+                </div>
+
+                <button class="btn" id="analysisBtn" onclick="startAnalysis()">
+                    <span>Start Comprehensive Analysis</span>
+                </button>
+            </div>
+
+            <div class="card" id="analysisResults" style="display: none;">
+                <h3 style="color: #00ffff; margin-bottom: 20px;">Analysis Results</h3>
+                <div class="results-container">
+                    <div class="terminal" id="analysisOutput"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Continuous Monitoring Tab -->
+        <div id="monitoring" class="tab-content">
+            <div class="card">
+                <h2 style="margin-bottom: 20px; color: #00ffff;">📊 Continuous Monitoring Setup</h2>
+                
+                <div class="input-group">
+                    <label class="input-label">Monitoring Targets (comma-separated)</label>
+                    <input type="text" class="input-field" id="monitoringTargets" placeholder="e.g., google.com, github.com, stackoverflow.com">
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Monitoring Interval (seconds)</label>
+                    <select class="select-field" id="monitoringInterval">
+                        <option value="300">5 minutes</option>
+                        <option value="600">10 minutes</option>
+                        <option value="900">15 minutes</option>
+                        <option value="1800">30 minutes</option>
+                        <option value="3600">1 hour</option>
+                    </select>
+                </div>
+
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="alertNewServices" checked>
+                        <label for="alertNewServices">Alert on New Services</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="alertCertChanges" checked>
+                        <label for="alertCertChanges">Alert on Certificate Changes</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="alertPerformance" checked>
+                        <label for="alertPerformance">Alert on Performance Issues</label>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <button class="btn" id="startMonitoringBtn" onclick="startMonitoring()">
+                        <span>Start Monitoring</span>
+                    </button>
+                    <button class="btn btn-danger" id="stopMonitoringBtn" onclick="stopMonitoring()" style="display: none;">
+                        <span>Stop Monitoring</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="stats-card">
+                    <div class="stats-number" id="monitoredTargets">0</div>
+                    <div class="stats-label">Monitored Targets</div>
+                </div>
+                <div class="stats-card">
+                    <div class="stats-number" id="activeAlerts">0</div>
+                    <div class="stats-label">Active Alerts</div>
+                </div>
+                <div class="stats-card">
+                    <div class="stats-number" id="totalScans">0</div>
+                    <div class="stats-label">Total Scans</div>
+                </div>
+                <div class="stats-card">
+                    <div class="stats-number" id="avgSecurityScore">0</div>
+                    <div class="stats-label">Avg Security Score</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Traffic Analysis Tab -->
+        <div id="traffic" class="tab-content">
+            <div class="card">
+                <h2 style="margin-bottom: 20px; color: #00ffff;">🌐 Real-time Traffic Analysis</h2>
+                
+                <div class="input-group">
+                    <label class="input-label">Network Interface</label>
+                    <select class="select-field" id="networkInterface">
+                        <option value="eth0">eth0 (Ethernet)</option>
+                        <option value="wlan0">wlan0 (WiFi)</option>
+                        <option value="lo">lo (Loopback)</option>
+                        <option value="any">any (All Interfaces)</option>
+                    </select>
+                </div>
+
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="threatDetection" checked>
+                        <label for="threatDetection">Enable Threat Detection</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="anomalyDetection" checked>
+                        <label for="anomalyDetection">Enable Anomaly Detection</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="performanceMonitoring" checked>
+                        <label for="performanceMonitoring">Performance Monitoring</label>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <button class="btn" id="startTrafficBtn" onclick="startTrafficAnalysis()">
+                        <span>Start Traffic Analysis</span>
+                    </button>
+                    <button class="btn btn-danger" id="stopTrafficBtn" onclick="stopTrafficAnalysis()" style="display: none;">
+                        <span>Stop Analysis</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="stats-card">
+                    <div class="stats-number" id="packetsAnalyzed">0</div>
+                    <div class="stats-label">Packets Analyzed</div>
+                </div>
+                <div class="stats-card">
+                    <div class="stats-number" id="threatsDetected">0</div>
+                    <div class="stats-label">Threats Detected</div>
+                </div>
+                <div class="stats-card">
+                    <div class="stats-number" id="bandwidthUtil">0%</div>
+                    <div class="stats-label">Bandwidth Utilization</div>
+                </div>
+                <div class="stats-card">
+                    <div class="stats-number" id="anomaliesFound">0</div>
+                    <div class="stats-label">Anomalies Found</div>
+                </div>
+            </div>
+
+            <div class="card" id="trafficResults" style="display: none;">
+                <h3 style="color: #00ffff; margin-bottom: 20px;">Traffic Analysis Live Feed</h3>
+                <div class="terminal" id="trafficOutput"></div>
+            </div>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content">
+            <div class="card">
+                <h2 style="margin-bottom: 20px; color: #00ffff;">📈 Monitoring Dashboard</h2>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px;">
+                    <button class="btn" id="refreshDashboardBtn" onclick="refreshDashboard()">
+                        <span>Refresh Dashboard</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="exportDashboard()">Export Data</button>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="stats-card">
+                    <div class="stats-number" id="totalTargets">0</div>
+                    <div class="stats-label">Total Targets</div>
+                </div>
+                <div class="stats-card">
+                    <div class="stats-number" id="onlineTargets">0</div>
+                    <div class="stats-label">Online Targets</div>
+                </div>
+                <div class="stats-card">
+                    <div class="stats-number" id="criticalAlerts">0</div>
+                    <div class="stats-label">Critical Alerts</div>
+                </div>
+                <div class="stats-card">
+                    <div class="stats-number" id="systemHealth">100%</div>
+                    <div class="stats-label">System Health</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 style="color: #00ffff; margin-bottom: 20px;">Target Status Overview</h3>
+                <div id="targetStatusList"></div>
+            </div>
+        </div>
+
+        <!-- Alerts Tab -->
+        <div id="alerts" class="tab-content">
+            <div class="card">
+                <h2 style="margin-bottom: 20px; color: #00ffff;">🚨 Active Alerts Management</h2>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px;">
+                    <button class="btn" id="refreshAlertsBtn" onclick="refreshAlerts()">
+                        <span>Refresh Alerts</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="acknowledgeAllAlerts()">Acknowledge All</button>
+                    <button class="btn btn-secondary" onclick="clearResolvedAlerts()">Clear Resolved</button>
+                </div>
+                
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="filterCritical" checked>
+                        <label for="filterCritical">Critical</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="filterHigh" checked>
+                        <label for="filterHigh">High</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="filterMedium" checked>
+                        <label for="filterMedium">Medium</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="filterLow">
+                        <label for="filterLow">Low</label>
+                    </div>
+                </div>
+            </div>
+
+            <div id="alertsList"></div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let socket;
+        let isConnected = false;
+        let currentAnalysis = null;
+        let monitoringActive = false;
+        let trafficAnalysisActive = false;
+
+        // API base URL
+        const API_BASE = 'http://localhost:5000/api';
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeWebSocket();
+            loadInitialData();
+        });
+
+        // WebSocket connection
+        function initializeWebSocket() {
+            socket = io('http://localhost:5000');
+
+            socket.on('connect', function() {
+                isConnected = true;
+                updateConnectionStatus('Connected', true);
+                showNotification('Connected to NetPulse Elite server', 'success');
+            });
+
+            socket.on('disconnect', function() {
+                isConnected = false;
+                updateConnectionStatus('Disconnected', false);
+                showNotification('Disconnected from server', 'error');
+            });
+
+            socket.on('log_message', function(data) {
+                addTerminalOutput('analysisOutput', `[${data.level}] ${data.message}`, 
+                    data.level.toLowerCase() === 'error' ? 'error' : 'output');
+            });
+
+            socket.on('analysis_started', function(data) {
+                showNotification(`Analysis started for ${data.target}`, 'success');
+                showResults('analysisResults');
+                clearTerminalOutput('analysisOutput');
+                addTerminalOutput('analysisOutput', `🔍 Starting comprehensive analysis for ${data.target}...`, 'success');
+            });
+
+            socket.on('analysis_completed', function(data) {
+                showNotification(`Analysis completed for ${data.target}`, 'success');
+                displayAnalysisResults(data.results);
+                setButtonLoading('analysisBtn', false);
+            });
+
+            socket.on('analysis_error', function(data) {
+                showNotification(`Analysis error for ${data.target}: ${data.error}`, 'error');
+                addTerminalOutput('analysisOutput', `❌ Error: ${data.error}`, 'error');
+                setButtonLoading('analysisBtn', false);
+            });
+
+            socket.on('monitoring_started', function(data) {
+                monitoringActive = true;
+                updateMonitoringUI(true);
+                showNotification(`Monitoring started for ${data.targets.length} targets`, 'success');
+            });
+
+            socket.on('monitoring_stopped', function(data) {
+                monitoringActive = false;
+                updateMonitoringUI(false);
+                showNotification('Monitoring stopped', 'warning');
+            });
+
+            socket.on('monitoring_error', function(data) {
+                monitoringActive = false;
+                updateMonitoringUI(false);
+                showNotification(`Monitoring error: ${data.error}`, 'error');
+            });
+
+            socket.on('monitoring_stats_update', function(data) {
+                updateMonitoringStats(data);
+            });
+
+            socket.on('traffic_analysis_started', function(data) {
+                trafficAnalysisActive = true;
+                updateTrafficUI(true);
+                showNotification(`Traffic analysis started on ${data.interface}`, 'success');
+                showResults('trafficResults');
+                clearTerminalOutput('trafficOutput');
+            });
+
+            socket.on('traffic_analysis_stopped', function(data) {
+                trafficAnalysisActive = false;
+                updateTrafficUI(false);
+                showNotification('Traffic analysis stopped', 'warning');
+            });
+
+            socket.on('traffic_analysis_error', function(data) {
+                trafficAnalysisActive = false;
+                updateTrafficUI(false);
+                showNotification(`Traffic analysis error: ${data.error}`, 'error');
+            });
+
+            socket.on('traffic_stats_update', function(data) {
+                updateTrafficStats(data);
+            });
+
+            socket.on('threat_detected', function(data) {
+                addTerminalOutput('trafficOutput', `🚨 ${data.timestamp}: ${data.description}`, 'error');
+                showNotification('Threat detected!', 'error');
+            });
+
+            socket.on('anomaly_detected', function(data) {
+                addTerminalOutput('trafficOutput', `⚠️ ${data.timestamp}: ${data.description}`, 'warning');
+            });
+
+            socket.on('alert_acknowledged', function(data) {
+                showNotification('Alert acknowledged', 'success');
+                refreshAlerts();
+            });
+
+            socket.on('alert_resolved', function(data) {
+                showNotification('Alert resolved', 'success');
+                refreshAlerts();
+            });
+        }
+
+        // Update connection status
+        function updateConnectionStatus(text, connected) {
+            const statusDot = document.getElementById('connectionStatus');
+            const statusText = document.getElementById('connectionText');
+            
+            statusText.textContent = text;
+            if (connected) {
+                statusDot.classList.add('connected');
+            } else {
+                statusDot.classList.remove('connected');
+            }
+        }
+
+        // Load initial data
+        async function loadInitialData() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                if (response.ok) {
+                    showNotification('Server connection established', 'success');
+                }
+            } catch (error) {
+                showNotification('Failed to connect to server', 'error');
+            }
+        }
+
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+
+            if (tabName === 'dashboard') {
+                refreshDashboard();
+            } else if (tabName === 'alerts') {
+                refreshAlerts();
+            }
+        }
+
+        // Single Analysis Functions
+        async function startAnalysis() {
+            const target = document.getElementById('analysisTarget').value.trim();
+            if (!target) {
+                showNotification('Please enter a target to analyze', 'error');
+                return;
+            }
+
+            const options = {
+                save_results: document.getElementById('saveResults').checked,
+                verbose: document.getElementById('verboseOutput').checked,
+                no_color: document.getElementById('noColor').checked
+            };
+
+            setButtonLoading('analysisBtn', true);
+
+            try {
+                const response = await fetch(`${API_BASE}/analysis/single`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        target: target,
+                        options: options
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification(data.message, 'success');
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                showNotification(`Analysis error: ${error.message}`, 'error');
+                setButtonLoading('analysisBtn', false);
+            }
+        }
+
+        function displayAnalysisResults(results) {
+            const output = document.getElementById('analysisOutput');
+            
+            // Display summary results
+            if (results.security_assessment) {
+                const security = results.security_assessment;
+                addTerminalOutput('analysisOutput', '='.repeat(60), 'output');
+                addTerminalOutput('analysisOutput', 'ANALYSIS SUMMARY', 'success');
+                addTerminalOutput('analysisOutput', '='.repeat(60), 'output');
+                addTerminalOutput('analysisOutput', `Security Score: ${security.overall_score}/100`, 'success');
+                addTerminalOutput('analysisOutput', `Risk Level: ${security.risk_level}`, 'output');
+                addTerminalOutput('analysisOutput', `Security Posture: ${security.security_posture}`, 'output');
+            }
+
+            if (results.port_analysis) {
+                addTerminalOutput('analysisOutput', `\nOpen Ports Discovered: ${results.port_analysis.length}`, 'success');
+                results.port_analysis.forEach(port => {
+                    addTerminalOutput('analysisOutput', 
+                        `  Port ${port.port}: ${port.service} (${port.state})`, 'output');
+                });
+            }
+
+            if (results.reconnaissance && results.reconnaissance.subdomains) {
+                const subdomains = results.reconnaissance.subdomains.discovered || [];
+                addTerminalOutput('analysisOutput', `\nSubdomains Found: ${subdomains.length}`, 'success');
+            }
+
+            addTerminalOutput('analysisOutput', '\n✅ Analysis completed successfully!', 'success');
+        }
+
+        // Monitoring Functions
+        async function startMonitoring() {
+            const targets = document.getElementById('monitoringTargets').value.trim();
+            if (!targets) {
+                showNotification('Please enter targets to monitor', 'error');
+                return;
+            }
+
+            const config = {
+                interval: parseInt(document.getElementById('monitoringInterval').value),
+                alert_new_services: document.getElementById('alertNewServices').checked,
+                alert_cert_changes: document.getElementById('alertCertChanges').checked,
+                alert_performance: document.getElementById('alertPerformance').checked
+            };
+
+            setButtonLoading('startMonitoringBtn', true);
+
+            try {
+                const response = await fetch(`${API_BASE}/monitoring/start`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        targets: targets.split(',').map(t => t.trim()),
+                        config: config
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification(data.message, 'success');
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                showNotification(`Monitoring error: ${error.message}`, 'error');
+                setButtonLoading('startMonitoringBtn', false);
+            }
+        }
+
+        async function stopMonitoring() {
+            try {
+                const response = await fetch(`${API_BASE}/monitoring/stop`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification(data.message, 'success');
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                showNotification(`Stop monitoring error: ${error.message}`, 'error');
+            }
+        }
+
+        function updateMonitoringUI(active) {
+            const startBtn = document.getElementById('startMonitoringBtn');
+            const stopBtn = document.getElementById('stopMonitoringBtn');
+            
+            if (active) {
+                startBtn.style.display = 'none';
+                stopBtn.style.display = 'inline-flex';
+            } else {
+                startBtn.style.display = 'inline-flex';
+                stopBtn.style.display = 'none';
+                setButtonLoading('startMonitoringBtn', false);
+            }
+        }
+
+        function updateMonitoringStats(stats) {
+            if (stats.monitored_targets !== undefined) {
+                document.getElementById('monitoredTargets').textContent = stats.monitored_targets;
+            }
+            if (stats.active_alerts !== undefined) {
+                document.getElementById('activeAlerts').textContent = stats.active_alerts;
+            }
+            if (stats.total_scans !== undefined) {
+                document.getElementById('totalScans').textContent = stats.total_scans;
+            }
+            if (stats.avg_security_score !== undefined) {
+                document.getElementById('avgSecurityScore').textContent = Math.round(stats.avg_security_score);
+            }
+        }
+
+        // Traffic Analysis Functions
+        async function startTrafficAnalysis() {
+            const interface = document.getElementById('networkInterface').value;
+            const options = {
+                threat_detection: document.getElementById('threatDetection').checked,
+                anomaly_detection: document.getElementById('anomalyDetection').checked,
+                performance_monitoring: document.getElementById('performanceMonitoring').checked
+            };
+
+            setButtonLoading('startTrafficBtn', true);
+
+            try {
+                const response = await fetch(`${API_BASE}/traffic/start`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        interface: interface,
+                        options: options
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification(data.message, 'success');
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                showNotification(`Traffic analysis error: ${error.message}`, 'error');
+                setButtonLoading('startTrafficBtn', false);
+            }
+        }
+
+        async function stopTrafficAnalysis() {
+            try {
+                const response = await fetch(`${API_BASE}/traffic/stop`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification(data.message, 'success');
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                showNotification(`Stop traffic analysis error: ${error.message}`, 'error');
+            }
+        }
+
+        function updateTrafficUI(active) {
+            const startBtn = document.getElementById('startTrafficBtn');
+            const stopBtn = document.getElementById('stopTrafficBtn');
+            
+            if (active) {
+                startBtn.style.display = 'none';
+                stopBtn.style.display = 'inline-flex';
+            } else {
+                startBtn.style.display = 'inline-flex';
+                stopBtn.style.display = 'none';
+                setButtonLoading('startTrafficBtn', false);
+            }
+        }
+
+        function updateTrafficStats(stats) {
+            if (stats.packets_analyzed !== undefined) {
+                document.getElementById('packetsAnalyzed').textContent = stats.packets_analyzed.toLocaleString();
+            }
+            if (stats.threats_detected !== undefined) {
+                document.getElementById('threatsDetected').textContent = stats.threats_detected;
+            }
+            if (stats.bandwidth_util !== undefined) {
+                document.getElementById('bandwidthUtil').textContent = stats.bandwidth_util + '%';
+            }
+            if (stats.anomalies_found !== undefined) {
+                document.getElementById('anomaliesFound').textContent = stats.anomalies_found;
+            }
+        }
+
+        // Dashboard Functions
+        async function refreshDashboard() {
+            setButtonLoading('refreshDashboardBtn', true);
+
+            try {
+                const response = await fetch(`${API_BASE}/dashboard`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    updateDashboardData(data);
+                    showNotification('Dashboard refreshed', 'success');
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                showNotification(`Dashboard error: ${error.message}`, 'error');
+            } finally {
+                setButtonLoading('refreshDashboardBtn', false);
+            }
+        }
+
+        function updateDashboardData(data) {
+            if (data.system_stats) {
+                const stats = data.system_stats;
+                document.getElementById('totalTargets').textContent = stats.total_targets || 0;
+                document.getElementById('onlineTargets').textContent = stats.online_targets || 0;
+                document.getElementById('criticalAlerts').textContent = stats.critical_alerts || 0;
+                document.getElementById('systemHealth').textContent = (stats.system_health || 100) + '%';
+            }
+
+            // Update target status list
+            updateTargetStatusList(data.monitoring_status || {});
+        }
+
+        function updateTargetStatusList(monitoringStatus) {
+            const statusList = document.getElementById('targetStatusList');
+            
+            if (!monitoringStatus || !monitoringStatus.active_alerts) {
+                statusList.innerHTML = '<div style="text-align: center; padding: 20px; color: rgba(255,255,255,0.6);">No monitoring data available</div>';
+                return;
+            }
+
+            // For demo purposes, we'll show some sample targets
+            const sampleTargets = ['google.com', 'github.com', 'stackoverflow.com', 'example.com'];
+            
+            let html = '';
+            sampleTargets.forEach(target => {
+                const isOnline = Math.random() > 0.2;
+                const score = Math.floor(Math.random() * 40 + 60);
+                const status = isOnline ? 'online' : Math.random() > 0.5 ? 'warning' : 'offline';
+                
+                html += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; margin-bottom: 10px; background: rgba(255,255,255,0.03); border-radius: 10px; border: 1px solid rgba(0,255,255,0.1);">
+                        <div style="display: flex; align-items: center;">
+                            <span class="status-indicator status-${status}"></span>
+                            <span style="font-weight: 600;">${target}</span>
+                        </div>
+                        <div style="display: flex; gap: 20px; align-items: center;">
+                            <span>Score: ${score}/100</span>
+                            <span style="color: ${isOnline ? '#50fa7b' : '#ff5555'};">${isOnline ? 'Online' : 'Offline'}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            statusList.innerHTML = html;
+        }
+
+        async function exportDashboard() {
+            try {
+                const response = await fetch(`${API_BASE}/export/dashboard`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `netpulse_dashboard_${new Date().toISOString().split('T')[0]}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    showNotification('Dashboard data exported', 'success');
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                showNotification(`Export error: ${error.message}`, 'error');
+            }
+        }
+
+        // Alerts Functions
+        async function refreshAlerts() {
+            setButtonLoading('refreshAlertsBtn', true);
+
+            try {
+                const response = await fetch(`${API_BASE}/alerts`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayAlerts(data.alerts || []);
+                    showNotification('Alerts refreshed', 'success');
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                showNotification(`Alerts error: ${error.message}`, 'error');
+            } finally {
+                setButtonLoading('refreshAlertsBtn', false);
+            }
+        }
+
+        function displayAlerts(alertsData) {
+            const alertsList = document.getElementById('alertsList');
+            const filterCritical = document.getElementById('filterCritical').checked;
+            const filterHigh = document.getElementById('filterHigh').checked;
+            const filterMedium = document.getElementById('filterMedium').checked;
+            const filterLow = document.getElementById('filterLow').checked;
+
+            const filteredAlerts = alertsData.filter(alert => {
+                switch(alert.severity) {
+                    case 'critical': return filterCritical;
+                    case 'high': return filterHigh;
+                    case 'medium': return filterMedium;
+                    case 'low': return filterLow;
+                    default: return false;
+                }
+            });
+
+            let html = '';
+            filteredAlerts.forEach(alert => {
+                const timestamp = new Date(alert.timestamp).toLocaleString();
+                html += `
+                    <div class="alert alert-${alert.severity}">
+                        <div class="alert-title">
+                            <span>${alert.severity.toUpperCase()} - ${alert.title}</span>
+                            ${alert.acknowledged ? '<span style="color: #50fa7b;">✓ Acknowledged</span>' : ''}
+                        </div>
+                        <div class="alert-meta">
+                            Target: ${alert.target} | Time: ${timestamp} | Category: ${alert.category}
+                        </div>
+                        <div>${alert.description}</div>
+                        <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                            ${!alert.acknowledged ? `<button class="btn btn-secondary" onclick="acknowledgeAlert('${alert.id}')" style="padding: 8px 16px; font-size: 14px;">Acknowledge</button>` : ''}
+                            <button class="btn btn-secondary" onclick="resolveAlert('${alert.id}')" style="padding: 8px 16px; font-size: 14px;">Mark Resolved</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            if (html === '') {
+                html = '<div style="text-align: center; padding: 40px; color: rgba(255,255,255,0.6);">No alerts match the current filter criteria.</div>';
+            }
+
+            alertsList.innerHTML = html;
+        }
+
+        async function acknowledgeAlert(alertId) {
+            try {
+                const response = await fetch(`${API_BASE}/alerts/${alertId}/acknowledge`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification('Alert acknowledged', 'success');
+                    refreshAlerts();
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                showNotification(`Acknowledge error: ${error.message}`, 'error');
+            }
+        }
+
+        async function resolveAlert(alertId) {
+            try {
+                const response = await fetch(`${API_BASE}/alerts/${alertId}/resolve`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification('Alert resolved', 'success');
+                    refreshAlerts();
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                showNotification(`Resolve error: ${error.message}`, 'error');
+            }
+        }
+
+        function acknowledgeAllAlerts() {
+            // This would need to be implemented in the backend
+            showNotification('Acknowledge all functionality not yet implemented', 'warning');
+        }
+
+        function clearResolvedAlerts() {
+            // This would need to be implemented in the backend
+            showNotification('Clear resolved functionality not yet implemented', 'warning');
+        }
+
+        // Utility Functions
+        function setButtonLoading(buttonId, loading) {
+            const button = document.getElementById(buttonId);
+            if (!button) return;
+
+            if (loading) {
+                button.disabled = true;
+                const originalContent = button.innerHTML;
+                button.setAttribute('data-original-content', originalContent);
+                button.innerHTML = '<div class="loading"></div><span>Processing...</span>';
+            } else {
+                button.disabled = false;
+                const originalContent = button.getAttribute('data-original-content');
+                if (originalContent) {
+                    button.innerHTML = originalContent;
+                }
+            }
+        }
+
+        function showResults(containerId) {
+            document.getElementById(containerId).style.display = 'block';
+        }
+
+        function addTerminalOutput(terminalId, text, type = 'output') {
+            const terminal = document.getElementById(terminalId);
+            if (!terminal) return;
+
+            const line = document.createElement('div');
+            line.className = `terminal-line terminal-${type}`;
+            line.textContent = text;
+            terminal.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+
+            // Limit terminal output to prevent memory issues
+            const lines = terminal.children;
+            if (lines.length > 1000) {
+                for (let i = 0; i < 100; i++) {
+                    lines[0].remove();
+                }
+            }
+        }
+
+        function clearTerminalOutput(terminalId) {
+            const terminal = document.getElementById(terminalId);
+            if (terminal) {
+                terminal.innerHTML = '';
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            // Remove existing notifications
+            const existingNotifications = document.querySelectorAll('.notification');
+            existingNotifications.forEach(notification => notification.remove());
+
+            // Create new notification
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+                <div>${message}</div>
+            `;
+
+            document.body.appendChild(notification);
+
+            // Show notification
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+        }
+
+        // Event listeners for filter checkboxes
+        document.addEventListener('change', function(e) {
+            if (e.target.type === 'checkbox' && e.target.id.startsWith('filter')) {
+                // Re-display alerts with new filter
+                refreshAlerts();
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+Enter to start analysis
+            if (e.ctrlKey && e.key === 'Enter') {
+                const activeTab = document.querySelector('.tab-content.active');
+                if (activeTab && activeTab.id === 'analysis') {
+                    startAnalysis();
+                }
+            }
+            
+            // Escape to clear notifications
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.notification').forEach(n => n.remove());
+            }
+        });
+
+        // Auto-refresh dashboard and alerts every 30 seconds when active
+        setInterval(() => {
+            const activeTab = document.querySelector('.tab-content.active');
+            if (activeTab) {
+                if (activeTab.id === 'dashboard' && isConnected) {
+                    refreshDashboard();
+                } else if (activeTab.id === 'alerts' && isConnected) {
+                    refreshAlerts();
+                }
+            }
+        }, 30000);
+
+        // Handle page visibility change
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden && isConnected) {
+                // Page became visible again, refresh current tab
+                const activeTab = document.querySelector('.tab-content.active');
+                if (activeTab) {
+                    if (activeTab.id === 'dashboard') {
+                        refreshDashboard();
+                    } else if (activeTab.id === 'alerts') {
+                        refreshAlerts();
+                    }
+                }
+            }
+        });
+
+        // Initialize tooltips and help text
+        function initializeHelp() {
+            // Add helpful tooltips and examples
+            const analysisTarget = document.getElementById('analysisTarget');
+            if (analysisTarget) {
+                analysisTarget.addEventListener('focus', function() {
+                    showNotification('Enter a domain, hostname, or IP address (e.g., google.com, 192.168.1.1)', 'info');
+                });
+            }
+        }
+
+        // Call initialization functions
+        setTimeout(initializeHelp, 1000);
+    </script>
+</body>
+</html>
