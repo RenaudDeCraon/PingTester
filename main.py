@@ -79,7 +79,7 @@ class Colors:
 
 @dataclass
 class TCPFlowAnalysis:
-    """Advanced TCP flow analysis"""
+    """Advanced TCP flow analysis - enhanced version"""
     src_ip: str
     dst_ip: str
     src_port: int
@@ -100,6 +100,9 @@ class TCPFlowAnalysis:
     tcp_flags_sequence: List[str] = field(default_factory=list)
     sequence_randomness_score: float = 0.0
     implementation_fingerprint: str = "unknown"
+    # New fields for enhanced analysis
+    last_activity: datetime = field(default_factory=datetime.now)
+    packet_sizes: deque = field(default_factory=lambda: deque(maxlen=200))
 
 @dataclass
 class ProtocolConformanceTest:
@@ -257,9 +260,9 @@ class AdvancedNetworkAnalyzer:
             await asyncio.sleep(5)
 
     def analyze_tcp_packet(self, packet):
-        """Deep TCP packet analysis"""
-        ip = packet[IP]
-        tcp = packet[TCP]
+        """Deep TCP packet analysis - enhanced version"""
+        ip = packet[scapy.IP]
+        tcp = packet[scapy.TCP]
         
         flow_key = (ip.src, tcp.sport, ip.dst, tcp.dport)
         reverse_key = (ip.dst, tcp.dport, ip.src, tcp.sport)
@@ -273,7 +276,20 @@ class AdvancedNetworkAnalyzer:
             flow = TCPFlowAnalysis(ip.src, ip.dst, tcp.sport, tcp.dport)
             self.tcp_flows[flow_key] = flow
         
-        # Analyze TCP options for advanced features
+        # Track last activity time
+        flow.last_activity = datetime.now()
+        
+        # Track packet sizes for covert channel detection
+        if not hasattr(flow, 'packet_sizes'):
+            flow.packet_sizes = deque(maxlen=200)
+        flow.packet_sizes.append(len(packet))
+        
+        # Track congestion window size (estimated from window field)
+        if not hasattr(flow, 'congestion_window_history'):
+            flow.congestion_window_history = deque(maxlen=100)
+        flow.congestion_window_history.append(tcp.window)
+        
+        # Original analysis code continues...
         if tcp.options:
             for option in tcp.options:
                 if option[0] == 'MSS':
@@ -1020,18 +1036,18 @@ class AdvancedNetworkAnalyzer:
             self.timing_analyses[f"TCP_HANDSHAKE_{target}"] = analysis
 
     async def bufferbloat_detector(self):
-        """Advanced bufferbloat detection"""
+        """Advanced bufferbloat detection with simulated load"""
         test_targets = ['8.8.8.8', '1.1.1.1']
         
         while self.running:
             for target in test_targets:
                 try:
-                    # Measure base RTT (unloaded)
+                    # Measure baseline RTT
                     base_rtt_samples = []
-                    for i in range(5):
+                    for i in range(10):
                         start = self.high_precision_timer()
-                        packet = IP(dst=target) / ICMP()
-                        response = sr1(packet, timeout=2, verbose=False)
+                        packet = scapy.IP(dst=target) / scapy.ICMP()
+                        response = scapy.sr1(packet, timeout=2, verbose=False)
                         if response:
                             rtt = (self.high_precision_timer() - start) * 1000
                             base_rtt_samples.append(rtt)
@@ -1042,49 +1058,71 @@ class AdvancedNetworkAnalyzer:
                     
                     base_rtt = statistics.mean(base_rtt_samples)
                     
-                    # Generate load (simulate bufferbloat test)
-                    # In real implementation, this would involve traffic generation
-                    # For now, we'll simulate the concept
-                    
-                    # Measure loaded RTT
+                    # Simulate network load by sending multiple concurrent requests
                     loaded_rtt_samples = []
-                    for i in range(5):
-                        start = self.high_precision_timer()
-                        packet = IP(dst=target) / ICMP()
-                        response = sr1(packet, timeout=2, verbose=False)
-                        if response:
-                            rtt = (self.high_precision_timer() - start) * 1000
-                            loaded_rtt_samples.append(rtt)
-                        await asyncio.sleep(0.1)
+                    
+                    async def send_load_packet():
+                        """Send a packet as part of load generation"""
+                        try:
+                            start = self.high_precision_timer()
+                            packet = scapy.IP(dst=target) / scapy.ICMP()
+                            response = scapy.sr1(packet, timeout=3, verbose=False)
+                            if response:
+                                rtt = (self.high_precision_timer() - start) * 1000
+                                loaded_rtt_samples.append(rtt)
+                        except:
+                            pass
+                    
+                    # Generate concurrent load
+                    load_tasks = []
+                    for i in range(20):  # Send 20 concurrent packets
+                        task = asyncio.create_task(send_load_packet())
+                        load_tasks.append(task)
+                        await asyncio.sleep(0.01)  # Small delay between starts
+                    
+                    # Wait for all load packets to complete
+                    await asyncio.gather(*load_tasks, return_exceptions=True)
                     
                     if loaded_rtt_samples:
                         loaded_rtt = statistics.mean(loaded_rtt_samples)
                         
-                        # Calculate bufferbloat score
-                        rtt_increase = loaded_rtt - base_rtt
+                        # Calculate bufferbloat metrics
+                        rtt_increase = max(0, loaded_rtt - base_rtt)
                         bufferbloat_score = rtt_increase / base_rtt if base_rtt > 0 else 0
                         
-                        # Estimate queue length
-                        estimated_queue_ms = max(0, rtt_increase)
+                        # Estimate queue delay and buffer size
+                        queue_delay_ms = rtt_increase
+                        estimated_bandwidth_mbps = 100  # Assume 100 Mbps for calculation
+                        bandwidth_bps = estimated_bandwidth_mbps * 1_000_000
+                        buffer_size_bytes = int((queue_delay_ms / 1000) * (bandwidth_bps / 8))
+                        
+                        # Determine queue management algorithm (heuristic)
+                        queue_mgmt = "unknown"
+                        if bufferbloat_score < 0.05:
+                            queue_mgmt = "fq_codel"  # Good queue management
+                        elif bufferbloat_score > 0.5:
+                            queue_mgmt = "fifo"      # Traditional FIFO buffer
+                        else:
+                            queue_mgmt = "mixed"     # Some queue management
                         
                         analysis = BufferbloatAnalysis(
                             interface="default",
                             base_rtt=base_rtt,
                             loaded_rtt=loaded_rtt,
                             bufferbloat_score=bufferbloat_score,
-                            queue_length_estimate=int(estimated_queue_ms),
+                            queue_length_estimate=int(queue_delay_ms),
                             congestion_detected=bufferbloat_score > 0.1,
-                            queue_management="unknown",
-                            bandwidth_delay_product=0,
-                            optimal_buffer_size=0
+                            queue_management=queue_mgmt,
+                            bandwidth_delay_product=int(base_rtt * bandwidth_bps / 8000),
+                            optimal_buffer_size=buffer_size_bytes
                         )
                         
                         self.bufferbloat_results[target] = analysis
-                
+                    
                 except Exception as e:
                     continue
             
-            await asyncio.sleep(60)  # Test every minute
+            await asyncio.sleep(120)  # Test every 2 minutes
 
     async def dns_advanced_analyzer(self):
         """Advanced DNS analysis including DoH/DoT"""
@@ -1308,161 +1346,403 @@ class AdvancedNetworkAnalyzer:
             await asyncio.sleep(120)  # Test every 2 minutes
 
     async def ntp_synchronization_analyzer(self):
-        """Analyze NTP synchronization"""
-        ntp_servers = ['pool.ntp.org', 'time.google.com', 'time.cloudflare.com']
+        """Analyze NTP synchronization with proper implementation"""
+        ntp_servers = ['pool.ntp.org', 'time.google.com', 'time.nist.gov']
         
         while self.running:
             for server in ntp_servers:
                 try:
-                    # Simple NTP analysis (would need more complex implementation)
                     start_time = self.high_precision_timer()
                     
-                    # This is a simplified version - real NTP analysis would be more complex
+                    # Create NTP packet (simplified NTP v3 packet)
+                    ntp_packet = struct.pack('!B' + 'B' * 47, 
+                                        0x1B,  # LI, VN, Mode
+                                        *([0] * 47))  # Rest of packet
+                    
+                    # Send NTP request
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    sock.settimeout(5)
+                    
                     try:
-                        result = subprocess.run(['ntpdate', '-q', server], 
-                                              capture_output=True, text=True, timeout=10)
+                        sock.sendto(ntp_packet, (server, 123))
+                        response, addr = sock.recvfrom(48)
                         end_time = self.high_precision_timer()
                         
                         query_time = (end_time - start_time) * 1000
                         
-                        # Parse offset from ntpdate output
-                        offset = 0.0
-                        if 'offset' in result.stdout:
-                            # Extract offset value
-                            pass
+                        # Parse NTP response for offset calculation
+                        if len(response) >= 48:
+                            # Extract transmit timestamp (bytes 40-47)
+                            transmit_timestamp = struct.unpack('!Q', response[40:48])[0]
+                            
+                            # Convert NTP timestamp to Unix timestamp
+                            ntp_epoch = 2208988800  # NTP epoch offset
+                            server_time = (transmit_timestamp >> 32) - ntp_epoch
+                            local_time = time.time()
+                            
+                            offset = server_time - local_time
+                            
+                            self.ntp_analysis[server] = {
+                                'query_time': query_time,
+                                'offset': offset,
+                                'reachable': True,
+                                'stratum': response[1],  # Stratum byte
+                                'precision': response[3] if len(response) > 3 else 0
+                            }
                         
+                    except socket.timeout:
                         self.ntp_analysis[server] = {
-                            'query_time': query_time,
-                            'offset': offset,
-                            'reachable': result.returncode == 0
+                            'query_time': -1,
+                            'offset': 0,
+                            'reachable': False,
+                            'error': 'timeout'
                         }
+                    except Exception as e:
+                        self.ntp_analysis[server] = {
+                            'query_time': -1,
+                            'offset': 0,
+                            'reachable': False,
+                            'error': str(e)
+                        }
+                    finally:
+                        sock.close()
                         
-                    except:
-                        # NTP analysis requires specialized tools
-                        pass
-                    
                 except Exception as e:
                     continue
             
             await asyncio.sleep(300)  # Every 5 minutes
 
     async def covert_channel_detector(self):
-        """Detect potential network covert channels"""
+        """Detect potential network covert channels with improved algorithms"""
         while self.running:
-            # Analyze traffic patterns for covert channels
-            # This is a simplified implementation
+            current_time = datetime.now()
             
-            # Check for suspicious timing patterns
+            # Analyze TCP flows for timing channels
             for flow_key, flow in self.tcp_flows.items():
-                if len(flow.rtt_samples) > 50:
-                    # Look for artificially regular timing
-                    timing_variance = np.var(flow.rtt_samples[-50:])
-                    timing_mean = np.mean(flow.rtt_samples[-50:])
+                if len(flow.rtt_samples) > 100:
+                    recent_samples = flow.rtt_samples[-100:]
                     
-                    if timing_variance < timing_mean * 0.01:  # Very low variance
-                        # Possible timing channel
+                    # Statistical analysis for timing regularity
+                    rtt_variance = np.var(recent_samples)
+                    rtt_mean = np.mean(recent_samples)
+                    coefficient_of_variation = rtt_variance / rtt_mean if rtt_mean > 0 else 0
+                    
+                    # Detect suspiciously regular timing (possible covert channel)
+                    if coefficient_of_variation < 0.01:  # Very low variance
+                        confidence = min(1.0, (0.01 - coefficient_of_variation) * 100)
+                        
                         covert_channel = {
                             'type': 'timing_channel',
                             'flow': flow_key,
-                            'confidence': 0.7,
-                            'description': 'Artificially regular timing detected'
+                            'confidence': confidence,
+                            'description': f'Artificially regular timing (CoV: {coefficient_of_variation:.6f})',
+                            'timestamp': current_time,
+                            'rtt_mean': rtt_mean,
+                            'rtt_variance': rtt_variance
                         }
-                        self.covert_channels.append(covert_channel)
+                        
+                        # Avoid duplicates
+                        if not any(cc['flow'] == flow_key and cc['type'] == 'timing_channel' 
+                                for cc in self.covert_channels):
+                            self.covert_channels.append(covert_channel)
+                    
+                    # Detect Inter-Packet Delay (IPD) channels
+                    if len(flow.rtt_samples) > 50:
+                        # Calculate inter-packet delays
+                        ipd_samples = []
+                        for i in range(1, len(recent_samples)):
+                            ipd = abs(recent_samples[i] - recent_samples[i-1])
+                            ipd_samples.append(ipd)
+                        
+                        if ipd_samples:
+                            # Look for patterns in IPD
+                            ipd_mean = np.mean(ipd_samples)
+                            ipd_std = np.std(ipd_samples)
+                            
+                            # Detect if IPDs cluster around specific values
+                            ipd_histogram, bins = np.histogram(ipd_samples, bins=20)
+                            max_bin_count = np.max(ipd_histogram)
+                            total_samples = len(ipd_samples)
+                            
+                            # If more than 40% of samples fall in one bin, it's suspicious
+                            if max_bin_count / total_samples > 0.4:
+                                confidence = (max_bin_count / total_samples - 0.4) / 0.6
+                                
+                                covert_channel = {
+                                    'type': 'ipd_channel',
+                                    'flow': flow_key,
+                                    'confidence': confidence,
+                                    'description': f'Clustered inter-packet delays ({max_bin_count}/{total_samples} in dominant bin)',
+                                    'timestamp': current_time,
+                                    'ipd_mean': ipd_mean,
+                                    'ipd_std': ipd_std
+                                }
+                                
+                                if not any(cc['flow'] == flow_key and cc['type'] == 'ipd_channel' 
+                                        for cc in self.covert_channels):
+                                    self.covert_channels.append(covert_channel)
             
-            await asyncio.sleep(60)
+            # Analyze packet size patterns for storage channels
+            packet_sizes = defaultdict(list)
+            for flow_key, flow in self.tcp_flows.items():
+                # This would require tracking packet sizes - simplified for now
+                if hasattr(flow, 'packet_sizes') and len(flow.packet_sizes) > 50:
+                    sizes = flow.packet_sizes[-50:]
+                    
+                    # Look for patterns in packet sizes
+                    unique_sizes = set(sizes)
+                    if len(unique_sizes) < len(sizes) * 0.3:  # Less than 30% unique sizes
+                        size_counts = Counter(sizes)
+                        most_common_size, count = size_counts.most_common(1)[0]
+                        
+                        if count / len(sizes) > 0.6:  # More than 60% same size
+                            covert_channel = {
+                                'type': 'size_channel',
+                                'flow': flow_key,
+                                'confidence': (count / len(sizes) - 0.6) / 0.4,
+                                'description': f'Repeated packet size pattern (size {most_common_size}: {count}/{len(sizes)})',
+                                'timestamp': current_time,
+                                'dominant_size': most_common_size,
+                                'size_frequency': count / len(sizes)
+                            }
+                            
+                            if not any(cc['flow'] == flow_key and cc['type'] == 'size_channel' 
+                                    for cc in self.covert_channels):
+                                self.covert_channels.append(covert_channel)
+            
+            # Clean up old covert channel detections (keep last hour)
+            cutoff_time = current_time - timedelta(hours=1)
+            self.covert_channels = [cc for cc in self.covert_channels 
+                                if cc['timestamp'] > cutoff_time]
+            
+            await asyncio.sleep(30)  # Check every 30 seconds
 
     async def bgp_route_monitor(self):
-        """Monitor BGP route changes (simplified)"""
-        # This would require BGP feeds in a real implementation
-        # For demo purposes, we'll simulate route monitoring
+        """Monitor BGP route changes with more realistic simulation"""
+        # This would connect to real BGP feeds in production (RouteViews, RIPE RIS)
+        # For now, we'll simulate based on actual internet events patterns
+        
+        common_prefixes = [
+            '8.8.8.0/24',      # Google DNS
+            '1.1.1.0/24',      # Cloudflare DNS  
+            '208.67.222.0/24', # OpenDNS
+            '9.9.9.0/24',      # Quad9
+            '185.228.168.0/24' # CleanBrowsing
+        ]
+        
+        as_paths = {
+            '8.8.8.0/24': ['AS15169'],
+            '1.1.1.0/24': ['AS13335'],
+            '208.67.222.0/24': ['AS36692'],
+            '9.9.9.0/24': ['AS19281'],
+            '185.228.168.0/24': ['AS42429']
+        }
         
         while self.running:
-            # In real implementation, this would connect to BGP feeds
-            # like RouteViews or RIPE RIS
+            # Simulate BGP updates based on realistic patterns
+            # Real BGP updates are rare for major prefixes, but do occur
             
-            # Simulate detecting route changes
-            if random.random() < 0.1:  # 10% chance per cycle
+            if random.random() < 0.02:  # 2% chance per cycle (more realistic)
+                prefix = random.choice(common_prefixes)
+                current_path = as_paths.get(prefix, ['AS0'])
+                
+                # Simulate different types of BGP changes
+                change_types = ['path_prepend', 'path_change', 'announcement', 'withdrawal']
+                change_type = random.choice(change_types)
+                
+                new_path = current_path.copy()
+                
+                if change_type == 'path_prepend':
+                    # AS path prepending for traffic engineering
+                    new_path = current_path + [current_path[0]]
+                elif change_type == 'path_change':
+                    # Route through different AS
+                    transit_as = random.choice(['AS7018', 'AS174', 'AS3356', 'AS1299'])
+                    new_path = [current_path[0], transit_as]
+                elif change_type == 'announcement':
+                    # New route announcement
+                    new_path = current_path
+                elif change_type == 'withdrawal':
+                    # Route withdrawal
+                    new_path = []
+                
                 route_change = {
                     'timestamp': datetime.now(),
-                    'prefix': '8.8.8.0/24',
-                    'old_path': 'AS15169',
-                    'new_path': 'AS15169 AS7018',
-                    'change_type': 'path_change'
+                    'prefix': prefix,
+                    'old_path': ' '.join(current_path),
+                    'new_path': ' '.join(new_path) if new_path else 'WITHDRAWN',
+                    'change_type': change_type,
+                    'origin_as': current_path[0] if current_path else 'unknown',
+                    'route_length': len(new_path)
                 }
+                
                 self.bgp_changes.append(route_change)
                 
-                # Keep only recent changes
-                cutoff = datetime.now() - timedelta(hours=24)
-                self.bgp_changes = [c for c in self.bgp_changes if c['timestamp'] > cutoff]
+                # Update our simulated AS paths
+                if new_path:
+                    as_paths[prefix] = new_path
+            
+            # Clean up old changes (keep last 24 hours)
+            cutoff = datetime.now() - timedelta(hours=24)
+            self.bgp_changes = [c for c in self.bgp_changes if c['timestamp'] > cutoff]
             
             await asyncio.sleep(300)  # Check every 5 minutes
 
     async def quic_http3_analyzer(self):
-        """Analyze QUIC/HTTP3 protocol support and performance"""
-        # This would require QUIC-capable libraries
-        # For now, we'll do basic HTTP/3 support detection
-        
-        http3_targets = ['google.com', 'cloudflare.com', 'facebook.com']
+        """Analyze QUIC/HTTP3 protocol support with better detection"""
+        http3_targets = ['google.com', 'cloudflare.com', 'facebook.com', 'youtube.com']
         
         while self.running:
             for target in http3_targets:
                 try:
-                    # Check Alt-Svc header for HTTP/3 support
-                    response = requests.get(f'https://{target}', timeout=10)
+                    analysis_data = {
+                        'target': target,
+                        'http2_support': False,
+                        'http3_advertised': False,
+                        'http3_versions': [],
+                        'alt_svc_header': '',
+                        'connection_time_http1': 0,
+                        'connection_time_http2': 0,
+                        'quic_support_detected': False
+                    }
                     
-                    alt_svc = response.headers.get('alt-svc', '')
-                    http3_supported = 'h3=' in alt_svc or 'h3-' in alt_svc
+                    # Test HTTP/1.1 connection time
+                    start = self.high_precision_timer()
+                    try:
+                        response = requests.get(f'https://{target}', 
+                                            timeout=10, 
+                                            headers={'Connection': 'close'})
+                        analysis_data['connection_time_http1'] = (self.high_precision_timer() - start) * 1000
+                        
+                        # Check Alt-Svc header for HTTP/3
+                        alt_svc = response.headers.get('alt-svc', '')
+                        analysis_data['alt_svc_header'] = alt_svc
+                        
+                        # Parse HTTP/3 versions from Alt-Svc
+                        if 'h3=' in alt_svc or 'h3-' in alt_svc:
+                            analysis_data['http3_advertised'] = True
+                            # Extract version numbers
+                            import re
+                            h3_versions = re.findall(r'h3[-=](\w+)', alt_svc)
+                            analysis_data['http3_versions'] = h3_versions
+                        
+                        # Check for HTTP/2 support
+                        if response.raw.version == 20:  # HTTP/2
+                            analysis_data['http2_support'] = True
                     
-                    # Store results (simplified)
-                    if target not in self.timing_analyses:
-                        self.timing_analyses[f"HTTP3_{target}"] = NetworkTimingAnalysis(
-                            measurement_type="HTTP3_SUPPORT",
-                            target=target,
-                            samples=[1.0 if http3_supported else 0.0],
-                            mean=1.0 if http3_supported else 0.0,
-                            median=1.0 if http3_supported else 0.0,
-                            std_dev=0.0,
-                            min_time=0.0,
-                            max_time=1.0,
-                            jitter=0.0,
-                            percentile_95=1.0 if http3_supported else 0.0,
-                            percentile_99=1.0 if http3_supported else 0.0,
-                            coefficient_of_variation=0.0
-                        )
+                    except Exception as e:
+                        analysis_data['connection_time_http1'] = -1
+                    
+                    # Test HTTP/2 connection time
+                    start = self.high_precision_timer()
+                    try:
+                        import httpx
+                        async with httpx.AsyncClient(http2=True) as client:
+                            response = await client.get(f'https://{target}', timeout=10)
+                            analysis_data['connection_time_http2'] = (self.high_precision_timer() - start) * 1000
+                            analysis_data['http2_support'] = True
+                    except:
+                        # Fallback without httpx
+                        analysis_data['connection_time_http2'] = -1
+                    
+                    # Simple QUIC detection via UDP probe
+                    try:
+                        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                        sock.settimeout(2)
+                        
+                        # Send a simple UDP probe to common QUIC ports
+                        quic_ports = [443, 80]
+                        for port in quic_ports:
+                            try:
+                                # Simple QUIC Initial packet probe (very basic)
+                                quic_probe = b'\x80\x00\x00\x01' + b'\x00' * 20  # Simplified
+                                sock.sendto(quic_probe, (target, port))
+                                
+                                # Try to receive response
+                                data, addr = sock.recvfrom(1024)
+                                if data:
+                                    analysis_data['quic_support_detected'] = True
+                                    break
+                            except:
+                                continue
+                        
+                        sock.close()
+                    except:
+                        pass
+                    
+                    # Store comprehensive analysis
+                    timing_analysis = NetworkTimingAnalysis(
+                        measurement_type="HTTP3_ANALYSIS",
+                        target=target,
+                        samples=[analysis_data['connection_time_http1'], analysis_data['connection_time_http2']],
+                        mean=(analysis_data['connection_time_http1'] + analysis_data['connection_time_http2']) / 2,
+                        median=statistics.median([analysis_data['connection_time_http1'], analysis_data['connection_time_http2']]),
+                        std_dev=0.0,
+                        min_time=min(analysis_data['connection_time_http1'], analysis_data['connection_time_http2']),
+                        max_time=max(analysis_data['connection_time_http1'], analysis_data['connection_time_http2']),
+                        jitter=abs(analysis_data['connection_time_http1'] - analysis_data['connection_time_http2']),
+                        percentile_95=max(analysis_data['connection_time_http1'], analysis_data['connection_time_http2']),
+                        percentile_99=max(analysis_data['connection_time_http1'], analysis_data['connection_time_http2']),
+                        coefficient_of_variation=0.0
+                    )
+                    
+                    # Store both timing and protocol support data
+                    self.timing_analyses[f"HTTP3_{target}"] = timing_analysis
+                    # Store detailed analysis in a separate structure
+                    if not hasattr(self, 'http3_detailed_analysis'):
+                        self.http3_detailed_analysis = {}
+                    self.http3_detailed_analysis[target] = analysis_data
                     
                 except Exception as e:
                     continue
             
             await asyncio.sleep(180)  # Every 3 minutes
 
+
     async def analyze_tcp_flows(self):
         """Periodic analysis of TCP flows"""
         current_time = datetime.now()
         
-        # Clean up old flows
-        for flow_key in list(self.tcp_flows.keys()):
-            flow = self.tcp_flows[flow_key]
-            if len(flow.tcp_flags_sequence) == 0:
-                continue
-            
-            # Remove flows older than 5 minutes with no activity
-            # (This is simplified - real implementation would track last activity)
-            
-        # Analyze active flows
-        for flow_key, flow in list(self.tcp_flows.items())[:10]:  # Limit display
-            # Update congestion window history analysis
+        # Clean up old flows (complete implementation)
+        cutoff_time = current_time - timedelta(minutes=5)
+        expired_flows = []
+        
+        for flow_key, flow in self.tcp_flows.items():
+            # Check if flow has been inactive (no recent packets)
+            if hasattr(flow, 'last_activity'):
+                if flow.last_activity < cutoff_time:
+                    expired_flows.append(flow_key)
+            elif len(flow.tcp_flags_sequence) == 0:
+                expired_flows.append(flow_key)
+        
+        # Remove expired flows
+        for flow_key in expired_flows:
+            del self.tcp_flows[flow_key]
+            if flow_key in self.tcp_sequence_analysis:
+                del self.tcp_sequence_analysis[flow_key]
+        
+        # Analyze active flows for congestion events
+        for flow_key, flow in self.tcp_flows.items():
             if len(flow.congestion_window_history) > 10:
-                # Detect congestion events
                 recent_windows = flow.congestion_window_history[-10:]
                 
-                # Look for sudden drops (congestion events)
+                # Detect congestion events (window size drops)
+                congestion_events = 0
                 for i in range(1, len(recent_windows)):
                     if recent_windows[i] < recent_windows[i-1] * 0.5:
-                        # Possible congestion event
-                        pass
+                        congestion_events += 1
+                        flow.fast_retransmits += 1
+                
+                # Update flow statistics
+                if len(flow.rtt_samples) > 5:
+                    recent_rtt = flow.rtt_samples[-5:]
+                    avg_rtt = statistics.mean(recent_rtt)
+                    if avg_rtt > 0:
+                        self.rtt_measurements[flow_key].extend(recent_rtt)
+
 
     async def display_advanced_dashboard(self):
-        """Display advanced analysis dashboard"""
+        """Display advanced analysis dashboard - enhanced version"""
         while self.running:
             # Clear screen
             print(f"{Colors.CLEAR_SCREEN}{Colors.HOME}", end='')
@@ -1477,13 +1757,26 @@ class AdvancedNetworkAnalyzer:
             # Protocol Conformance Summary
             print(f"{Colors.BOLD}📋 Protocol Conformance Summary{Colors.RESET}")
             if self.protocol_tests:
-                recent_tests = self.protocol_tests[-10:]
+                recent_tests = self.protocol_tests[-20:]  # Look at more tests
                 
                 conformant_count = sum(1 for t in recent_tests if t.conformant)
                 total_tests = len(recent_tests)
                 conformance_rate = (conformant_count / total_tests * 100) if total_tests > 0 else 0
                 
                 print(f"  Conformance Rate: {Colors.GREEN if conformance_rate > 80 else Colors.YELLOW if conformance_rate > 60 else Colors.RED}{conformance_rate:.1f}%{Colors.RESET} ({conformant_count}/{total_tests})")
+                
+                # Group by protocol
+                protocol_stats = defaultdict(lambda: {'total': 0, 'passed': 0})
+                for test in recent_tests:
+                    protocol_stats[test.protocol]['total'] += 1
+                    if test.conformant:
+                        protocol_stats[test.protocol]['passed'] += 1
+                
+                print(f"  By Protocol:")
+                for protocol, stats in protocol_stats.items():
+                    rate = (stats['passed'] / stats['total'] * 100) if stats['total'] > 0 else 0
+                    color = Colors.GREEN if rate > 80 else Colors.YELLOW if rate > 60 else Colors.RED
+                    print(f"    {protocol}: {color}{rate:.0f}%{Colors.RESET} ({stats['passed']}/{stats['total']})")
                 
                 # Show recent failures
                 failures = [t for t in recent_tests if not t.conformant]
@@ -1496,12 +1789,28 @@ class AdvancedNetworkAnalyzer:
                 print("  No conformance tests completed yet")
             print()
             
-            # TCP Flow Analysis
+            # TCP Flow Analysis - Enhanced
             print(f"{Colors.BOLD}🔄 TCP Flow Analysis{Colors.RESET}")
             active_flows = len(self.tcp_flows)
             print(f"  Active Flows: {Colors.CYAN}{active_flows}{Colors.RESET}")
             
             if self.tcp_flows:
+                # Show congestion algorithm distribution
+                congestion_algorithms = defaultdict(int)
+                implementations = defaultdict(int)
+                
+                for flow in self.tcp_flows.values():
+                    congestion_algorithms[flow.congestion_algorithm] += 1
+                    implementations[flow.implementation_fingerprint] += 1
+                
+                print(f"  Congestion Algorithms:")
+                for algo, count in congestion_algorithms.items():
+                    print(f"    {algo}: {count}")
+                
+                print(f"  Implementations:")
+                for impl, count in list(implementations.items())[:3]:
+                    print(f"    {impl}: {count}")
+                
                 # Show top flows by activity
                 sorted_flows = sorted(self.tcp_flows.items(), 
                                     key=lambda x: len(x[1].tcp_flags_sequence), reverse=True)
@@ -1511,10 +1820,10 @@ class AdvancedNetworkAnalyzer:
                     src_ip, src_port, dst_ip, dst_port = flow_key
                     print(f"    {i+1}. {src_ip}:{src_port} → {dst_ip}:{dst_port}")
                     print(f"       Algorithm: {Colors.GREEN}{flow.congestion_algorithm}{Colors.RESET} | "
-                          f"Window Scaling: {'Yes' if flow.window_scaling else 'No'} | "
-                          f"SACK: {'Yes' if flow.sack_enabled else 'No'}")
+                        f"Window Scaling: {'Yes' if flow.window_scaling else 'No'} | "
+                        f"SACK: {'Yes' if flow.sack_enabled else 'No'}")
                     print(f"       Implementation: {flow.implementation_fingerprint} | "
-                          f"Seq Randomness: {flow.sequence_randomness_score:.3f}")
+                        f"Seq Randomness: {flow.sequence_randomness_score:.3f}")
             print()
             
             # Network Timing Analysis
@@ -1523,16 +1832,33 @@ class AdvancedNetworkAnalyzer:
                 for name, analysis in list(self.timing_analyses.items())[:4]:
                     if analysis.samples:
                         timing_color = (Colors.GREEN if analysis.mean < 50 else 
-                                      Colors.YELLOW if analysis.mean < 100 else Colors.RED)
+                                    Colors.YELLOW if analysis.mean < 100 else Colors.RED)
                         
                         print(f"  {name}")
                         print(f"    Mean: {timing_color}{analysis.mean:.2f}ms{Colors.RESET} | "
-                              f"Jitter: {analysis.jitter:.2f}ms | "
-                              f"95th: {analysis.percentile_95:.2f}ms")
+                            f"Jitter: {analysis.jitter:.2f}ms | "
+                            f"95th: {analysis.percentile_95:.2f}ms")
                         print(f"    CoV: {analysis.coefficient_of_variation:.3f} | "
-                              f"Samples: {len(analysis.samples)}")
+                            f"Samples: {len(analysis.samples)}")
             else:
                 print("  Collecting timing data...")
+            print()
+            
+            # NTP Analysis - New section
+            print(f"{Colors.BOLD}🕐 NTP Synchronization Analysis{Colors.RESET}")
+            if self.ntp_analysis:
+                for server, data in list(self.ntp_analysis.items())[:3]:
+                    if data.get('reachable', False):
+                        offset_color = (Colors.GREEN if abs(data.get('offset', 0)) < 0.1 else 
+                                    Colors.YELLOW if abs(data.get('offset', 0)) < 1.0 else Colors.RED)
+                        print(f"  {server}")
+                        print(f"    Offset: {offset_color}{data.get('offset', 0):.3f}s{Colors.RESET} | "
+                            f"Query: {data.get('query_time', 0):.1f}ms | "
+                            f"Stratum: {data.get('stratum', '?')}")
+                    else:
+                        print(f"  {server}: {Colors.RED}Unreachable{Colors.RESET}")
+            else:
+                print("  Analyzing NTP servers...")
             print()
             
             # DNS Advanced Analysis
@@ -1541,31 +1867,49 @@ class AdvancedNetworkAnalyzer:
                 for name, analysis in list(self.dns_analyses.items())[:3]:
                     print(f"  {name}")
                     
-                    udp_color = Colors.GREEN if analysis.response_time_udp < 50 else Colors.YELLOW
-                    tcp_color = Colors.GREEN if analysis.response_time_tcp < 100 else Colors.YELLOW
-                    doh_color = Colors.GREEN if analysis.response_time_doh < 100 else Colors.YELLOW
+                    udp_color = Colors.GREEN if analysis.response_time_udp > 0 and analysis.response_time_udp < 50 else Colors.YELLOW
+                    tcp_color = Colors.GREEN if analysis.response_time_tcp > 0 and analysis.response_time_tcp < 100 else Colors.YELLOW
+                    doh_color = Colors.GREEN if analysis.response_time_doh > 0 and analysis.response_time_doh < 100 else Colors.YELLOW
                     
-                    print(f"    UDP: {udp_color}{analysis.response_time_udp:.1f}ms{Colors.RESET} | "
-                          f"TCP: {tcp_color}{analysis.response_time_tcp:.1f}ms{Colors.RESET} | "
-                          f"DoH: {doh_color}{analysis.response_time_doh:.1f}ms{Colors.RESET}")
+                    udp_str = f"{udp_color}{analysis.response_time_udp:.1f}ms{Colors.RESET}" if analysis.response_time_udp > 0 else f"{Colors.RED}Failed{Colors.RESET}"
+                    tcp_str = f"{tcp_color}{analysis.response_time_tcp:.1f}ms{Colors.RESET}" if analysis.response_time_tcp > 0 else f"{Colors.RED}Failed{Colors.RESET}"
+                    doh_str = f"{doh_color}{analysis.response_time_doh:.1f}ms{Colors.RESET}" if analysis.response_time_doh > 0 else f"{Colors.RED}Failed{Colors.RESET}"
+                    
+                    print(f"    UDP: {udp_str} | TCP: {tcp_str} | DoH: {doh_str}")
                     print(f"    EDNS: {'Yes' if analysis.edns_support else 'No'} | "
-                          f"Size: {analysis.response_size}B")
+                        f"Size: {analysis.response_size}B")
             else:
                 print("  Collecting DNS data...")
+            print()
+            
+            # HTTP/3 and QUIC Analysis - Enhanced
+            print(f"{Colors.BOLD}🚀 HTTP/3 & QUIC Analysis{Colors.RESET}")
+            if hasattr(self, 'http3_detailed_analysis') and self.http3_detailed_analysis:
+                for target, data in list(self.http3_detailed_analysis.items())[:3]:
+                    http3_status = f"{Colors.GREEN}Supported{Colors.RESET}" if data['http3_advertised'] else f"{Colors.YELLOW}Not Advertised{Colors.RESET}"
+                    print(f"  {target}")
+                    print(f"    HTTP/3: {http3_status} | HTTP/2: {'Yes' if data['http2_support'] else 'No'}")
+                    if data['http3_versions']:
+                        print(f"    H3 Versions: {', '.join(data['http3_versions'])}")
+                    if data['connection_time_http1'] > 0 and data['connection_time_http2'] > 0:
+                        print(f"    HTTP/1.1: {data['connection_time_http1']:.1f}ms | HTTP/2: {data['connection_time_http2']:.1f}ms")
+            else:
+                print("  Analyzing HTTP/3 support...")
             print()
             
             # IPv6 vs IPv4 Comparison
             print(f"{Colors.BOLD}🌐 IPv6 vs IPv4 Performance{Colors.RESET}")
             if self.ipv6v4_comparisons:
                 for domain, analysis in list(self.ipv6v4_comparisons.items())[:3]:
-                    ipv4_color = Colors.GREEN if analysis.ipv4_latency < 50 else Colors.YELLOW
-                    ipv6_color = Colors.GREEN if analysis.ipv6_latency < 50 else Colors.YELLOW
+                    ipv4_color = Colors.GREEN if analysis.ipv4_latency > 0 and analysis.ipv4_latency < 50 else Colors.YELLOW
+                    ipv6_color = Colors.GREEN if analysis.ipv6_latency > 0 and analysis.ipv6_latency < 50 else Colors.YELLOW
+                    
+                    ipv4_str = f"{ipv4_color}{analysis.ipv4_latency:.1f}ms{Colors.RESET}" if analysis.ipv4_latency > 0 else f"{Colors.RED}Failed{Colors.RESET}"
+                    ipv6_str = f"{ipv6_color}{analysis.ipv6_latency:.1f}ms{Colors.RESET}" if analysis.ipv6_latency > 0 else f"{Colors.RED}Failed{Colors.RESET}"
                     
                     print(f"  {domain}")
-                    print(f"    IPv4: {ipv4_color}{analysis.ipv4_latency:.1f}ms{Colors.RESET} "
-                          f"({analysis.ipv4_packet_loss:.1f}% loss) | "
-                          f"IPv6: {ipv6_color}{analysis.ipv6_latency:.1f}ms{Colors.RESET} "
-                          f"({analysis.ipv6_packet_loss:.1f}% loss)")
+                    print(f"    IPv4: {ipv4_str} ({analysis.ipv4_packet_loss:.1f}% loss) | "
+                        f"IPv6: {ipv6_str} ({analysis.ipv6_packet_loss:.1f}% loss)")
                     print(f"    Happy Eyeballs: {analysis.happy_eyeballs_preference}")
             else:
                 print("  Collecting IPv6/IPv4 data...")
@@ -1576,18 +1920,19 @@ class AdvancedNetworkAnalyzer:
             if self.bufferbloat_results:
                 for target, analysis in list(self.bufferbloat_results.items())[:2]:
                     bloat_color = (Colors.GREEN if analysis.bufferbloat_score < 0.1 else 
-                                 Colors.YELLOW if analysis.bufferbloat_score < 0.3 else Colors.RED)
+                                Colors.YELLOW if analysis.bufferbloat_score < 0.3 else Colors.RED)
                     
                     print(f"  {target}")
-                    print(f"    Base RTT: {analysis.base_rtt:.1f}ms | "
-                          f"Loaded RTT: {analysis.loaded_rtt:.1f}ms")
+                    print(f"    Base RTT: {analysis.base_rtt:.1f}ms | Loaded RTT: {analysis.loaded_rtt:.1f}ms")
                     print(f"    Bufferbloat Score: {bloat_color}{analysis.bufferbloat_score:.3f}{Colors.RESET} | "
-                          f"Queue: ~{analysis.queue_length_estimate}ms")
+                        f"Queue Mgmt: {analysis.queue_management}")
+                    print(f"    Queue Delay: ~{analysis.queue_length_estimate}ms | "
+                        f"Buffer Size: ~{analysis.optimal_buffer_size//1024}KB")
             else:
                 print("  Analyzing bufferbloat...")
             print()
             
-            # Security Analysis
+            # Security Analysis - Enhanced
             print(f"{Colors.BOLD}🔒 Security Analysis{Colors.RESET}")
             sequence_issues = sum(1 for flow in self.tcp_flows.values() 
                                 if flow.sequence_randomness_score < 0.5)
@@ -1596,10 +1941,22 @@ class AdvancedNetworkAnalyzer:
             print(f"  TCP Sequence Issues: {Colors.RED if sequence_issues > 0 else Colors.GREEN}{sequence_issues}{Colors.RESET}")
             print(f"  Covert Channels: {Colors.RED if covert_channels > 0 else Colors.GREEN}{covert_channels}{Colors.RESET}")
             
+            if self.covert_channels:
+                channel_types = defaultdict(int)
+                for cc in self.covert_channels:
+                    channel_types[cc['type']] += 1
+                print(f"    Types: {dict(channel_types)}")
+            
             if self.bgp_changes:
                 recent_changes = len([c for c in self.bgp_changes 
                                     if (datetime.now() - c['timestamp']).seconds < 3600])
                 print(f"  BGP Changes (1h): {Colors.YELLOW if recent_changes > 0 else Colors.GREEN}{recent_changes}{Colors.RESET}")
+                
+                if recent_changes > 0:
+                    change_types = defaultdict(int)
+                    for change in self.bgp_changes[-10:]:  # Last 10 changes
+                        change_types[change['change_type']] += 1
+                    print(f"    Recent Types: {dict(change_types)}")
             
             print(f"\n{Colors.DIM}Advanced Protocol Analysis | Press Ctrl+C to exit{Colors.RESET}")
             
