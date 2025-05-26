@@ -106,7 +106,7 @@ class TCPFlowAnalysis:
 
 @dataclass
 class ProtocolConformanceTest:
-    """Protocol conformance testing results"""
+
     protocol: str
     rfc_number: str
     test_name: str
@@ -119,7 +119,7 @@ class ProtocolConformanceTest:
 
 @dataclass
 class NetworkTimingAnalysis:
-    """Microsecond-precision network timing analysis"""
+
     measurement_type: str
     target: str
     samples: List[float] = field(default_factory=list)
@@ -135,7 +135,7 @@ class NetworkTimingAnalysis:
 
 @dataclass
 class BufferbloatAnalysis:
-    """Advanced bufferbloat detection and analysis"""
+
     interface: str
     base_rtt: float
     loaded_rtt: float
@@ -148,7 +148,7 @@ class BufferbloatAnalysis:
 
 @dataclass
 class DNSAdvancedAnalysis:
-    """Advanced DNS analysis including DoH/DoT"""
+
     resolver: str
     query_type: str
     response_time_udp: float
@@ -164,7 +164,7 @@ class DNSAdvancedAnalysis:
 
 @dataclass
 class IPv6vs4Analysis:
-    """IPv6 vs IPv4 performance comparison"""
+
     target: str
     ipv4_latency: float
     ipv6_latency: float
@@ -201,7 +201,7 @@ class AdvancedNetworkAnalyzer:
         self.path_mtu_results = {}
         
     async def start_advanced_analysis(self):
-        """Start comprehensive advanced network analysis"""
+
         print(f"{Colors.CYAN}{Colors.BOLD}")
         print("╔══════════════════════════════════════════════════════════════════════╗")
         print("║          NetPulse Elite - Advanced Protocol Research Platform       ║")
@@ -235,7 +235,7 @@ class AdvancedNetworkAnalyzer:
             print(f"\n{Colors.YELLOW}Advanced analysis terminated{Colors.RESET}")
 
     async def tcp_flow_analyzer(self):
-        """Advanced TCP flow analysis with congestion control detection"""
+
         def packet_handler(packet):
             try:
                 if packet.haslayer(TCP) and packet.haslayer(IP):
@@ -260,14 +260,14 @@ class AdvancedNetworkAnalyzer:
             await asyncio.sleep(5)
 
     def analyze_tcp_packet(self, packet):
-        """Deep TCP packet analysis - enhanced version"""
+
         ip = packet[scapy.IP]
         tcp = packet[scapy.TCP]
         
         flow_key = (ip.src, tcp.sport, ip.dst, tcp.dport)
         reverse_key = (ip.dst, tcp.dport, ip.src, tcp.sport)
         
-        # Use existing flow or create new one
+
         if flow_key in self.tcp_flows:
             flow = self.tcp_flows[flow_key]
         elif reverse_key in self.tcp_flows:
@@ -276,20 +276,20 @@ class AdvancedNetworkAnalyzer:
             flow = TCPFlowAnalysis(ip.src, ip.dst, tcp.sport, tcp.dport)
             self.tcp_flows[flow_key] = flow
         
-        # Track last activity time
+
         flow.last_activity = datetime.now()
         
-        # Track packet sizes for covert channel detection
+
         if not hasattr(flow, 'packet_sizes'):
             flow.packet_sizes = deque(maxlen=200)
         flow.packet_sizes.append(len(packet))
         
-        # Track congestion window size (estimated from window field)
+
         if not hasattr(flow, 'congestion_window_history'):
             flow.congestion_window_history = deque(maxlen=100)
         flow.congestion_window_history.append(tcp.window)
         
-        # Original analysis code continues...
+
         if tcp.options:
             for option in tcp.options:
                 if option[0] == 'MSS':
@@ -301,7 +301,7 @@ class AdvancedNetworkAnalyzer:
                 elif option[0] == 'Timestamp':
                     flow.timestamp_enabled = True
         
-        # Window size analysis
+
         window_size = tcp.window
         if window_size > flow.max_window_size:
             flow.max_window_size = window_size
@@ -309,7 +309,7 @@ class AdvancedNetworkAnalyzer:
         if flow.initial_window_size == 0 and tcp.flags.S:
             flow.initial_window_size = window_size
         
-        # Track TCP flags sequence for fingerprinting
+
         flags = []
         if tcp.flags.S: flags.append('S')
         if tcp.flags.A: flags.append('A')
@@ -321,59 +321,59 @@ class AdvancedNetworkAnalyzer:
         flag_str = ''.join(flags)
         flow.tcp_flags_sequence.append(flag_str)
         
-        # Detect congestion control algorithm
+
         flow.congestion_algorithm = self.detect_congestion_algorithm(flow, packet)
         
-        # TCP sequence number analysis for randomness
-        if tcp.flags.S:  # SYN packet
+
+        if tcp.flags.S:
             self.tcp_sequence_analysis[flow_key].append(tcp.seq)
             if len(self.tcp_sequence_analysis[flow_key]) > 10:
                 flow.sequence_randomness_score = self.analyze_sequence_randomness(
                     self.tcp_sequence_analysis[flow_key]
                 )
         
-        # Implementation fingerprinting
+
         flow.implementation_fingerprint = self.fingerprint_tcp_implementation(packet)
 
     def detect_congestion_algorithm(self, flow, packet):
-        """Detect TCP congestion control algorithm"""
+
         tcp = packet[TCP]
         
-        # Analyze window behavior patterns
+
         if len(flow.congestion_window_history) > 10:
             window_pattern = flow.congestion_window_history[-10:]
             
-            # Check for Cubic behavior (gradual increase then rapid)
+
             if self.is_cubic_pattern(window_pattern):
                 return "CUBIC"
             
-            # Check for BBR behavior (probing patterns)
+
             elif self.is_bbr_pattern(window_pattern):
                 return "BBR"
             
-            # Check for Reno behavior (linear increase)
+
             elif self.is_reno_pattern(window_pattern):
                 return "Reno"
             
-            # Check for Vegas behavior (RTT-based)
+
             elif self.is_vegas_pattern(window_pattern, flow.rtt_samples):
                 return "Vegas"
         
         return "unknown"
 
     def is_cubic_pattern(self, window_history):
-        """Detect CUBIC congestion control pattern"""
+
         if len(window_history) < 5:
             return False
         
-        # CUBIC shows cubic growth function
+
         growth_rates = []
         for i in range(1, len(window_history)):
             if window_history[i-1] > 0:
                 growth_rate = (window_history[i] - window_history[i-1]) / window_history[i-1]
                 growth_rates.append(growth_rate)
         
-        # CUBIC growth is not linear
+
         if len(growth_rates) > 3:
             variance = np.var(growth_rates)
             return variance > 0.1  # High variance indicates non-linear growth
@@ -381,71 +381,71 @@ class AdvancedNetworkAnalyzer:
         return False
 
     def is_bbr_pattern(self, window_history):
-        """Detect BBR congestion control pattern"""
+
         if len(window_history) < 8:
             return False
         
-        # BBR shows probing patterns with periodic increases
+
         recent = window_history[-8:]
         
-        # Look for gain cycling pattern (characteristic of BBR)
+
         peaks = []
         for i in range(1, len(recent)-1):
             if recent[i] > recent[i-1] and recent[i] > recent[i+1]:
                 peaks.append(i)
         
-        # BBR typically has regular probing cycles
+
         return len(peaks) >= 2
 
     def is_reno_pattern(self, window_history):
-        """Detect Reno congestion control pattern"""
+
         if len(window_history) < 5:
             return False
         
-        # Reno shows linear growth (additive increase)
+
         differences = []
         for i in range(1, len(window_history)):
             differences.append(window_history[i] - window_history[i-1])
         
-        # Check for consistent additive increase
+
         if len(differences) > 3:
             avg_diff = np.mean(differences)
             variance = np.var(differences)
-            # Linear growth has low variance in differences
+
             return variance < 0.5 and avg_diff > 0
 
         return False
 
     def is_vegas_pattern(self, window_history, rtt_samples):
-        """Detect Vegas congestion control pattern"""
-        # Vegas adjusts based on RTT, not just packet loss
+
+
         if len(rtt_samples) < 5 or len(window_history) < 5:
             return False
         
-        # Check if window changes correlate with RTT changes
+
         if len(rtt_samples) == len(window_history):
             correlation = np.corrcoef(window_history, rtt_samples)[0, 1]
-            # Negative correlation suggests RTT-based control
+
             return correlation < -0.3
         
         return False
 
     def analyze_sequence_randomness(self, sequences):
-        """Analyze TCP sequence number randomness (RFC 6528)"""
+
         if len(sequences) < 10:
             return 0.0
         
-        # Convert to differences
+
         differences = []
         for i in range(1, len(sequences)):
             diff = (sequences[i] - sequences[i-1]) % (2**32)
             differences.append(diff)
         
-        # Chi-square test for randomness
+
         if len(differences) < 5:
             return 0.0
         
-        # Simple entropy calculation
+
         byte_counts = Counter()
         for diff in differences:
             for i in range(4):
@@ -459,17 +459,17 @@ class AdvancedNetworkAnalyzer:
                 p = count / total_bytes
                 entropy -= p * math.log2(p)
         
-        # Normalize to 0-1 scale (max entropy is 8 bits)
+
         return entropy / 8.0
 
     def fingerprint_tcp_implementation(self, packet):
-        """Fingerprint TCP implementation based on packet characteristics"""
+
         tcp = packet[TCP]
         ip = packet[IP]
         
         fingerprint_features = []
         
-        # Initial window size
+
         if tcp.flags.S:
             window = tcp.window
             if window == 65535:
@@ -479,7 +479,7 @@ class AdvancedNetworkAnalyzer:
             elif window == 5840:
                 fingerprint_features.append("win5840")
         
-        # TTL analysis
+
         ttl = ip.ttl
         if ttl == 64:
             fingerprint_features.append("ttl64")
@@ -488,14 +488,14 @@ class AdvancedNetworkAnalyzer:
         elif ttl == 255:
             fingerprint_features.append("ttl255")
         
-        # TCP options analysis
+
         if tcp.options:
             option_order = []
             for option in tcp.options:
                 option_order.append(option[0])
             fingerprint_features.append(f"opts:{'_'.join(option_order)}")
         
-        # Determine likely implementation
+
         fingerprint = '_'.join(fingerprint_features)
         
         if 'win65535' in fingerprint and 'ttl64' in fingerprint:
@@ -508,7 +508,7 @@ class AdvancedNetworkAnalyzer:
             return f"Unknown({fingerprint})"
 
     async def protocol_conformance_tester(self):
-        """Test protocol conformance against RFCs"""
+
         while self.running:
             # Test various protocols
             await self.test_tcp_conformance()
@@ -519,24 +519,24 @@ class AdvancedNetworkAnalyzer:
             await asyncio.sleep(30)
 
     async def test_tcp_conformance(self):
-        """Test TCP RFC conformance"""
+
         test_targets = ['google.com', '1.1.1.1', '8.8.8.8']
         
         for target in test_targets:
             try:
-                # Test RFC 793 - TCP specification
+
                 test = await self.test_tcp_initial_sequence_number(target)
                 self.protocol_tests.append(test)
                 
-                # Test RFC 1323 - TCP Window Scaling
+
                 test = await self.test_tcp_window_scaling(target)
                 self.protocol_tests.append(test)
                 
-                # Test RFC 2018 - TCP Selective Acknowledgment
+
                 test = await self.test_tcp_sack_support(target)
                 self.protocol_tests.append(test)
                 
-                # Test RFC 6298 - TCP Retransmission Timer
+
                 test = await self.test_tcp_retransmission_behavior(target)
                 self.protocol_tests.append(test)
                 
@@ -544,15 +544,15 @@ class AdvancedNetworkAnalyzer:
                 pass
 
     async def test_tcp_initial_sequence_number(self, target):
-        """Test TCP ISN randomness (RFC 6528)"""
+
         try:
-            # Create multiple connections to test ISN randomness
+
             sequences = []
             for _ in range(5):
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.settimeout(5)
                 
-                # Capture with Scapy during connection
+
                 try:
                     result = await asyncio.get_event_loop().run_in_executor(
                         None, sock.connect, (target, 80)
@@ -563,10 +563,10 @@ class AdvancedNetworkAnalyzer:
                 
                 await asyncio.sleep(0.1)
             
-            # Analyze collected sequences from TCP flow analyzer
+
             flow_key = None
             for key, flow in self.tcp_flows.items():
-                if target in key[2]:  # destination IP
+                if target in key[2]:
                     flow_key = key
                     break
             
@@ -600,9 +600,9 @@ class AdvancedNetworkAnalyzer:
         )
 
     async def test_tcp_window_scaling(self, target):
-        """Test TCP Window Scaling (RFC 1323)"""
+
         try:
-            # Check if target supports window scaling
+
             syn_packet = IP(dst=target) / TCP(dport=80, flags='S', 
                                             options=[('WScale', 8)])
             
@@ -633,7 +633,7 @@ class AdvancedNetworkAnalyzer:
         )
 
     async def test_tcp_sack_support(self, target):
-        """Test TCP SACK support (RFC 2018)"""
+
         try:
             syn_packet = IP(dst=target) / TCP(dport=80, flags='S', 
                                             options=[('SAckOK', '')])
@@ -665,9 +665,7 @@ class AdvancedNetworkAnalyzer:
         )
 
     async def test_tcp_retransmission_behavior(self, target):
-        """Test TCP retransmission behavior (RFC 6298)"""
-        # This would require more complex packet crafting and timing analysis
-        # For now, return a placeholder test
+
         return ProtocolConformanceTest(
             protocol="TCP",
             rfc_number="RFC 6298",
@@ -680,16 +678,16 @@ class AdvancedNetworkAnalyzer:
         )
 
     async def test_http_conformance(self):
-        """Test HTTP RFC conformance"""
+
         test_urls = ['http://httpbin.org/get', 'https://www.google.com']
         
         for url in test_urls:
             try:
-                # Test RFC 7230 - HTTP/1.1 Message Syntax
+
                 test = await self.test_http_header_parsing(url)
                 self.protocol_tests.append(test)
                 
-                # Test RFC 7231 - HTTP/1.1 Semantics
+
                 test = await self.test_http_method_support(url)
                 self.protocol_tests.append(test)
                 
@@ -697,11 +695,11 @@ class AdvancedNetworkAnalyzer:
                 pass
 
     async def test_http_header_parsing(self, url):
-        """Test HTTP header parsing conformance"""
+
         try:
             response = requests.get(url, timeout=10)
             
-            # Check for required headers
+
             required_headers = ['Content-Type', 'Content-Length', 'Date']
             missing_headers = []
             
@@ -709,7 +707,7 @@ class AdvancedNetworkAnalyzer:
                 if header not in response.headers:
                     missing_headers.append(header)
             
-            # Check header format
+
             conformant = len(missing_headers) == 0
             
             return ProtocolConformanceTest(
@@ -731,12 +729,11 @@ class AdvancedNetworkAnalyzer:
             )
 
     async def test_http_method_support(self, url):
-        """Test HTTP method support"""
+
         try:
-            # Test OPTIONS method
+
             response = requests.options(url, timeout=10)
-            
-            # Check Allow header
+
             allow_header = response.headers.get('Allow', '')
             supported_methods = [m.strip() for m in allow_header.split(',')]
             
@@ -764,16 +761,16 @@ class AdvancedNetworkAnalyzer:
             )
 
     async def test_dns_conformance(self):
-        """Test DNS RFC conformance"""
+
         test_domains = ['google.com', 'cloudflare.com', 'example.com']
         
         for domain in test_domains:
             try:
-                # Test RFC 1035 - DNS specification
+
                 test = await self.test_dns_response_format(domain)
                 self.protocol_tests.append(test)
                 
-                # Test RFC 2671 - EDNS support
+
                 test = await self.test_dns_edns_support(domain)
                 self.protocol_tests.append(test)
                 
@@ -781,14 +778,14 @@ class AdvancedNetworkAnalyzer:
                 pass
 
     async def test_dns_response_format(self, domain):
-        """Test DNS response format conformance"""
+
         try:
             resolver = dns.resolver.Resolver()
             resolver.timeout = 5
             
             response = resolver.resolve(domain, 'A')
             
-            # Check response structure
+
             has_answer = len(response) > 0
             valid_ttl = all(r.ttl > 0 for r in response)
             
@@ -813,16 +810,16 @@ class AdvancedNetworkAnalyzer:
             )
 
     async def test_dns_edns_support(self, domain):
-        """Test EDNS support (RFC 2671)"""
+
         try:
-            # Create EDNS query
+
             query = dns.message.make_query(domain, 'A')
             query.use_edns(edns=True, payload=4096)
             
-            # Send query
+
             response = dns.query.udp(query, '8.8.8.8', timeout=5)
             
-            # Check EDNS support
+
             has_edns = response.edns >= 0
             
             return ProtocolConformanceTest(
@@ -844,12 +841,12 @@ class AdvancedNetworkAnalyzer:
             )
 
     async def test_icmp_conformance(self):
-        """Test ICMP RFC conformance"""
+
         test_targets = ['8.8.8.8', '1.1.1.1']
         
         for target in test_targets:
             try:
-                # Test RFC 792 - ICMP specification
+
                 test = await self.test_icmp_echo_response(target)
                 self.protocol_tests.append(test)
                 
@@ -857,7 +854,7 @@ class AdvancedNetworkAnalyzer:
                 pass
 
     async def test_icmp_echo_response(self, target):
-        """Test ICMP echo response conformance"""
+
         try:
             # Send ICMP echo request
             packet = IP(dst=target) / ICMP()
@@ -896,18 +893,18 @@ class AdvancedNetworkAnalyzer:
             )
 
     async def network_timing_analyzer(self):
-        """High-precision network timing analysis"""
+
         targets = ['8.8.8.8', '1.1.1.1', 'google.com', 'cloudflare.com']
         
         while self.running:
             for target in targets:
-                # RTT analysis
+
                 await self.measure_rtt_precision(target)
                 
-                # DNS timing
+
                 await self.measure_dns_timing(target)
                 
-                # TCP handshake timing
+
                 await self.measure_tcp_handshake_timing(target)
                 
                 await asyncio.sleep(1)
@@ -915,14 +912,14 @@ class AdvancedNetworkAnalyzer:
             await asyncio.sleep(10)
 
     async def measure_rtt_precision(self, target):
-        """Measure RTT with microsecond precision"""
+
         samples = []
         
         for i in range(10):
             try:
                 start_time = self.high_precision_timer()
                 
-                # ICMP ping
+
                 packet = IP(dst=target) / ICMP(id=os.getpid() + i)
                 response = sr1(packet, timeout=2, verbose=False)
                 
@@ -955,7 +952,7 @@ class AdvancedNetworkAnalyzer:
             self.timing_analyses[f"RTT_{target}"] = analysis
 
     async def measure_dns_timing(self, target):
-        """Measure DNS resolution timing"""
+
         samples = []
         
         for i in range(5):
@@ -991,7 +988,7 @@ class AdvancedNetworkAnalyzer:
             self.timing_analyses[f"DNS_{target}"] = analysis
 
     async def measure_tcp_handshake_timing(self, target):
-        """Measure TCP handshake timing"""
+
         samples = []
         
         for i in range(3):
@@ -1036,7 +1033,7 @@ class AdvancedNetworkAnalyzer:
             self.timing_analyses[f"TCP_HANDSHAKE_{target}"] = analysis
 
     async def bufferbloat_detector(self):
-        """Advanced bufferbloat detection with simulated load"""
+
         test_targets = ['8.8.8.8', '1.1.1.1']
         
         while self.running:
@@ -1058,11 +1055,11 @@ class AdvancedNetworkAnalyzer:
                     
                     base_rtt = statistics.mean(base_rtt_samples)
                     
-                    # Simulate network load by sending multiple concurrent requests
+
                     loaded_rtt_samples = []
                     
                     async def send_load_packet():
-                        """Send a packet as part of load generation"""
+
                         try:
                             start = self.high_precision_timer()
                             packet = scapy.IP(dst=target) / scapy.ICMP()
@@ -1073,37 +1070,37 @@ class AdvancedNetworkAnalyzer:
                         except:
                             pass
                     
-                    # Generate concurrent load
+
                     load_tasks = []
-                    for i in range(20):  # Send 20 concurrent packets
+                    for i in range(20):
                         task = asyncio.create_task(send_load_packet())
                         load_tasks.append(task)
-                        await asyncio.sleep(0.01)  # Small delay between starts
+                        await asyncio.sleep(0.01)
                     
-                    # Wait for all load packets to complete
+
                     await asyncio.gather(*load_tasks, return_exceptions=True)
                     
                     if loaded_rtt_samples:
                         loaded_rtt = statistics.mean(loaded_rtt_samples)
                         
-                        # Calculate bufferbloat metrics
+
                         rtt_increase = max(0, loaded_rtt - base_rtt)
                         bufferbloat_score = rtt_increase / base_rtt if base_rtt > 0 else 0
                         
-                        # Estimate queue delay and buffer size
+
                         queue_delay_ms = rtt_increase
-                        estimated_bandwidth_mbps = 100  # Assume 100 Mbps for calculation
+                        estimated_bandwidth_mbps = 100
                         bandwidth_bps = estimated_bandwidth_mbps * 1_000_000
                         buffer_size_bytes = int((queue_delay_ms / 1000) * (bandwidth_bps / 8))
                         
-                        # Determine queue management algorithm (heuristic)
+
                         queue_mgmt = "unknown"
                         if bufferbloat_score < 0.05:
-                            queue_mgmt = "fq_codel"  # Good queue management
+                            queue_mgmt = "fq_codel"
                         elif bufferbloat_score > 0.5:
-                            queue_mgmt = "fifo"      # Traditional FIFO buffer
+                            queue_mgmt = "fifo"
                         else:
-                            queue_mgmt = "mixed"     # Some queue management
+                            queue_mgmt = "mixed"
                         
                         analysis = BufferbloatAnalysis(
                             interface="default",
@@ -1122,10 +1119,10 @@ class AdvancedNetworkAnalyzer:
                 except Exception as e:
                     continue
             
-            await asyncio.sleep(120)  # Test every 2 minutes
+            await asyncio.sleep(120)
 
     async def dns_advanced_analyzer(self):
-        """Advanced DNS analysis including DoH/DoT"""
+
         test_domains = ['google.com', 'cloudflare.com', 'github.com']
         resolvers = {
             'Cloudflare': '1.1.1.1',
@@ -1191,7 +1188,7 @@ class AdvancedNetworkAnalyzer:
             await asyncio.sleep(30)
 
     async def ipv6_vs_ipv4_analyzer(self):
-        """Compare IPv6 vs IPv4 performance"""
+
         dual_stack_targets = {
             'google.com': ('172.217.164.142', '2607:f8b0:4004:c1b::65'),
             'cloudflare.com': ('104.16.132.229', '2606:4700::6810:84e5'),
@@ -1264,41 +1261,38 @@ class AdvancedNetworkAnalyzer:
             await asyncio.sleep(60)
 
     async def tcp_sequence_analyzer(self):
-        """Analyze TCP sequence numbers for security"""
+
         while self.running:
             # Analysis is performed in real-time during packet capture
             # This function processes the collected data
             
             for flow_key, sequences in self.tcp_sequence_analysis.items():
                 if len(sequences) > 20:
-                    # Perform advanced sequence analysis
+
                     randomness = self.analyze_sequence_randomness(sequences)
                     
-                    # Check for predictable patterns
+
                     predictable = self.detect_predictable_sequences(sequences)
                     
                     if predictable:
-                        # This could indicate a security issue
+
                         pass
             
             await asyncio.sleep(30)
 
     def detect_predictable_sequences(self, sequences):
-        """Detect predictable sequence number patterns"""
+
         if len(sequences) < 10:
             return False
-        
-        # Check for linear patterns
+
         differences = []
         for i in range(1, len(sequences)):
             diff = (sequences[i] - sequences[i-1]) % (2**32)
             differences.append(diff)
-        
-        # Check if differences are too consistent
+
         if len(set(differences)) < len(differences) * 0.5:
             return True  # Too predictable
-        
-        # Check for arithmetic progression
+
         if len(differences) > 3:
             first_diff = differences[0]
             arithmetic = all(abs(d - first_diff) < first_diff * 0.1 for d in differences[1:4])
@@ -1308,20 +1302,20 @@ class AdvancedNetworkAnalyzer:
         return False
 
     async def path_mtu_analyzer(self):
-        """Analyze Path MTU Discovery implementation"""
+
         targets = ['8.8.8.8', '1.1.1.1']
         
         while self.running:
             for target in targets:
                 try:
-                    # Test PMTU discovery by sending different sized packets
+
                     mtu_results = {}
                     
                     test_sizes = [1500, 1472, 1024, 576, 512]
                     
                     for size in test_sizes:
                         try:
-                            # Create packet with DF bit set
+
                             packet = IP(dst=target, flags="DF") / ICMP() / ("X" * (size - 28))
                             response = sr1(packet, timeout=3, verbose=False)
                             
@@ -1343,10 +1337,10 @@ class AdvancedNetworkAnalyzer:
                 except Exception as e:
                     continue
             
-            await asyncio.sleep(120)  # Test every 2 minutes
+            await asyncio.sleep(120)
 
     async def ntp_synchronization_analyzer(self):
-        """Analyze NTP synchronization with proper implementation"""
+
         ntp_servers = ['pool.ntp.org', 'time.google.com', 'time.nist.gov']
         
         while self.running:
@@ -1354,12 +1348,12 @@ class AdvancedNetworkAnalyzer:
                 try:
                     start_time = self.high_precision_timer()
                     
-                    # Create NTP packet (simplified NTP v3 packet)
+
                     ntp_packet = struct.pack('!B' + 'B' * 47, 
                                         0x1B,  # LI, VN, Mode
                                         *([0] * 47))  # Rest of packet
                     
-                    # Send NTP request
+
                     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                     sock.settimeout(5)
                     
@@ -1370,13 +1364,13 @@ class AdvancedNetworkAnalyzer:
                         
                         query_time = (end_time - start_time) * 1000
                         
-                        # Parse NTP response for offset calculation
+
                         if len(response) >= 48:
-                            # Extract transmit timestamp (bytes 40-47)
+
                             transmit_timestamp = struct.unpack('!Q', response[40:48])[0]
                             
-                            # Convert NTP timestamp to Unix timestamp
-                            ntp_epoch = 2208988800  # NTP epoch offset
+
+                            ntp_epoch = 2208988800
                             server_time = (transmit_timestamp >> 32) - ntp_epoch
                             local_time = time.time()
                             
@@ -1386,7 +1380,7 @@ class AdvancedNetworkAnalyzer:
                                 'query_time': query_time,
                                 'offset': offset,
                                 'reachable': True,
-                                'stratum': response[1],  # Stratum byte
+                                'stratum': response[1],
                                 'precision': response[3] if len(response) > 3 else 0
                             }
                         
@@ -1410,25 +1404,25 @@ class AdvancedNetworkAnalyzer:
                 except Exception as e:
                     continue
             
-            await asyncio.sleep(300)  # Every 5 minutes
+            await asyncio.sleep(300)
 
     async def covert_channel_detector(self):
         """Detect potential network covert channels with improved algorithms"""
         while self.running:
             current_time = datetime.now()
             
-            # Analyze TCP flows for timing channels
+
             for flow_key, flow in self.tcp_flows.items():
                 if len(flow.rtt_samples) > 100:
                     recent_samples = flow.rtt_samples[-100:]
                     
-                    # Statistical analysis for timing regularity
+
                     rtt_variance = np.var(recent_samples)
                     rtt_mean = np.mean(recent_samples)
                     coefficient_of_variation = rtt_variance / rtt_mean if rtt_mean > 0 else 0
                     
-                    # Detect suspiciously regular timing (possible covert channel)
-                    if coefficient_of_variation < 0.01:  # Very low variance
+
+                    if coefficient_of_variation < 0.01:
                         confidence = min(1.0, (0.01 - coefficient_of_variation) * 100)
                         
                         covert_channel = {
@@ -1441,30 +1435,30 @@ class AdvancedNetworkAnalyzer:
                             'rtt_variance': rtt_variance
                         }
                         
-                        # Avoid duplicates
+
                         if not any(cc['flow'] == flow_key and cc['type'] == 'timing_channel' 
                                 for cc in self.covert_channels):
                             self.covert_channels.append(covert_channel)
                     
-                    # Detect Inter-Packet Delay (IPD) channels
+
                     if len(flow.rtt_samples) > 50:
-                        # Calculate inter-packet delays
+
                         ipd_samples = []
                         for i in range(1, len(recent_samples)):
                             ipd = abs(recent_samples[i] - recent_samples[i-1])
                             ipd_samples.append(ipd)
                         
                         if ipd_samples:
-                            # Look for patterns in IPD
+
                             ipd_mean = np.mean(ipd_samples)
                             ipd_std = np.std(ipd_samples)
                             
-                            # Detect if IPDs cluster around specific values
+
                             ipd_histogram, bins = np.histogram(ipd_samples, bins=20)
                             max_bin_count = np.max(ipd_histogram)
                             total_samples = len(ipd_samples)
                             
-                            # If more than 40% of samples fall in one bin, it's suspicious
+
                             if max_bin_count / total_samples > 0.4:
                                 confidence = (max_bin_count / total_samples - 0.4) / 0.6
                                 
@@ -1482,20 +1476,20 @@ class AdvancedNetworkAnalyzer:
                                         for cc in self.covert_channels):
                                     self.covert_channels.append(covert_channel)
             
-            # Analyze packet size patterns for storage channels
+
             packet_sizes = defaultdict(list)
             for flow_key, flow in self.tcp_flows.items():
-                # This would require tracking packet sizes - simplified for now
+
                 if hasattr(flow, 'packet_sizes') and len(flow.packet_sizes) > 50:
                     sizes = flow.packet_sizes[-50:]
                     
-                    # Look for patterns in packet sizes
+
                     unique_sizes = set(sizes)
-                    if len(unique_sizes) < len(sizes) * 0.3:  # Less than 30% unique sizes
+                    if len(unique_sizes) < len(sizes) * 0.3:
                         size_counts = Counter(sizes)
                         most_common_size, count = size_counts.most_common(1)[0]
                         
-                        if count / len(sizes) > 0.6:  # More than 60% same size
+                        if count / len(sizes) > 0.6:
                             covert_channel = {
                                 'type': 'size_channel',
                                 'flow': flow_key,
@@ -1510,15 +1504,14 @@ class AdvancedNetworkAnalyzer:
                                     for cc in self.covert_channels):
                                 self.covert_channels.append(covert_channel)
             
-            # Clean up old covert channel detections (keep last hour)
+
             cutoff_time = current_time - timedelta(hours=1)
             self.covert_channels = [cc for cc in self.covert_channels 
                                 if cc['timestamp'] > cutoff_time]
             
-            await asyncio.sleep(30)  # Check every 30 seconds
+            await asyncio.sleep(30)
 
     async def bgp_route_monitor(self):
-        """Monitor BGP route changes with more realistic simulation"""
         # This would connect to real BGP feeds in production (RouteViews, RIPE RIS)
         # For now, we'll simulate based on actual internet events patterns
         
@@ -1589,7 +1582,7 @@ class AdvancedNetworkAnalyzer:
             await asyncio.sleep(300)  # Check every 5 minutes
 
     async def quic_http3_analyzer(self):
-        """Analyze QUIC/HTTP3 protocol support with better detection"""
+
         http3_targets = ['google.com', 'cloudflare.com', 'facebook.com', 'youtube.com']
         
         while self.running:
@@ -1606,7 +1599,7 @@ class AdvancedNetworkAnalyzer:
                         'quic_support_detected': False
                     }
                     
-                    # Test HTTP/1.1 connection time
+
                     start = self.high_precision_timer()
                     try:
                         response = requests.get(f'https://{target}', 
@@ -1614,26 +1607,26 @@ class AdvancedNetworkAnalyzer:
                                             headers={'Connection': 'close'})
                         analysis_data['connection_time_http1'] = (self.high_precision_timer() - start) * 1000
                         
-                        # Check Alt-Svc header for HTTP/3
+
                         alt_svc = response.headers.get('alt-svc', '')
                         analysis_data['alt_svc_header'] = alt_svc
                         
-                        # Parse HTTP/3 versions from Alt-Svc
+
                         if 'h3=' in alt_svc or 'h3-' in alt_svc:
                             analysis_data['http3_advertised'] = True
-                            # Extract version numbers
+
                             import re
                             h3_versions = re.findall(r'h3[-=](\w+)', alt_svc)
                             analysis_data['http3_versions'] = h3_versions
                         
-                        # Check for HTTP/2 support
+
                         if response.raw.version == 20:  # HTTP/2
                             analysis_data['http2_support'] = True
                     
                     except Exception as e:
                         analysis_data['connection_time_http1'] = -1
                     
-                    # Test HTTP/2 connection time
+
                     start = self.high_precision_timer()
                     try:
                         import httpx
@@ -1642,23 +1635,23 @@ class AdvancedNetworkAnalyzer:
                             analysis_data['connection_time_http2'] = (self.high_precision_timer() - start) * 1000
                             analysis_data['http2_support'] = True
                     except:
-                        # Fallback without httpx
+
                         analysis_data['connection_time_http2'] = -1
                     
-                    # Simple QUIC detection via UDP probe
+
                     try:
                         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                         sock.settimeout(2)
                         
-                        # Send a simple UDP probe to common QUIC ports
+
                         quic_ports = [443, 80]
                         for port in quic_ports:
                             try:
-                                # Simple QUIC Initial packet probe (very basic)
+
                                 quic_probe = b'\x80\x00\x00\x01' + b'\x00' * 20  # Simplified
                                 sock.sendto(quic_probe, (target, port))
                                 
-                                # Try to receive response
+
                                 data, addr = sock.recvfrom(1024)
                                 if data:
                                     analysis_data['quic_support_detected'] = True
@@ -1670,7 +1663,7 @@ class AdvancedNetworkAnalyzer:
                     except:
                         pass
                     
-                    # Store comprehensive analysis
+
                     timing_analysis = NetworkTimingAnalysis(
                         measurement_type="HTTP3_ANALYSIS",
                         target=target,
@@ -1686,9 +1679,9 @@ class AdvancedNetworkAnalyzer:
                         coefficient_of_variation=0.0
                     )
                     
-                    # Store both timing and protocol support data
+
                     self.timing_analyses[f"HTTP3_{target}"] = timing_analysis
-                    # Store detailed analysis in a separate structure
+
                     if not hasattr(self, 'http3_detailed_analysis'):
                         self.http3_detailed_analysis = {}
                     self.http3_detailed_analysis[target] = analysis_data
@@ -1696,7 +1689,7 @@ class AdvancedNetworkAnalyzer:
                 except Exception as e:
                     continue
             
-            await asyncio.sleep(180)  # Every 3 minutes
+            await asyncio.sleep(180)
 
 
     async def analyze_tcp_flows(self):
@@ -1708,32 +1701,32 @@ class AdvancedNetworkAnalyzer:
         expired_flows = []
         
         for flow_key, flow in self.tcp_flows.items():
-            # Check if flow has been inactive (no recent packets)
+
             if hasattr(flow, 'last_activity'):
                 if flow.last_activity < cutoff_time:
                     expired_flows.append(flow_key)
             elif len(flow.tcp_flags_sequence) == 0:
                 expired_flows.append(flow_key)
         
-        # Remove expired flows
+
         for flow_key in expired_flows:
             del self.tcp_flows[flow_key]
             if flow_key in self.tcp_sequence_analysis:
                 del self.tcp_sequence_analysis[flow_key]
         
-        # Analyze active flows for congestion events
+
         for flow_key, flow in self.tcp_flows.items():
             if len(flow.congestion_window_history) > 10:
                 recent_windows = flow.congestion_window_history[-10:]
                 
-                # Detect congestion events (window size drops)
+
                 congestion_events = 0
                 for i in range(1, len(recent_windows)):
                     if recent_windows[i] < recent_windows[i-1] * 0.5:
                         congestion_events += 1
                         flow.fast_retransmits += 1
                 
-                # Update flow statistics
+
                 if len(flow.rtt_samples) > 5:
                     recent_rtt = flow.rtt_samples[-5:]
                     avg_rtt = statistics.mean(recent_rtt)
