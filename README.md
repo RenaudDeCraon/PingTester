@@ -1,9 +1,7 @@
 **Install required dependencies:**
 
-pip install flask
-pip install flask-cors
-pip install flask-socketio
+pip install scapy requests numpy scikit-learn dnspython paramiko telnetlib3 python-nmap pyshark
 
 **Run the application:**
 
-python netpulse_backend.py
+python main.py
